@@ -230,9 +230,6 @@ task_diagram_response = visual.ImageStim(
     pos=(.54, 0), size=(.8, 1),
     texRes=256)
 
-trialComponents = [cross, square_right, square_left,
-    flash_circle_outer, lilsquare]
-
 
 ##-------------------------JITTER THE STAIRCASE-------------------------------##
 
@@ -335,23 +332,28 @@ while advance < 5:
     win.flip()
 
 
-##-----------CREATE SHORT DELAY BEFORE FIRST PRACTICE TRIAL-------------------##
+##----------------------------------------------------------------------------##
+##--------------------------START MAIN EXPERIMENT TRIALS----------------------##
+##----------------------------------------------------------------------------##
 
 
 
+trials = range(ptrials)
 q_opacity = 0
 qloop = 0
 
 for rep in range(3):
     q_acc = 0
-    if rep == 0:
-        trials = range(ptrials)
-    elif rep == 2:
+    if rep == 2:
         blocks = blocksreal
         np.random.shuffle(randomseq)
     while q_acc < qcutoff:
         acclist = []
         if rep == 1:
+            
+            
+            ##---------TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART--------------##
+            
             while qloop == 2:
                 inst45.setAutoDraw(True)
                 if(event.getKeys(keyList=["space"])):
@@ -378,6 +380,7 @@ for rep in range(3):
                 while frameN < blockdelay:
                     frameN += 1
                     win.flip()
+                    
             trials = data.QuestHandler(startVal = startThresh, startValSd = .23,
                 pThreshold=.62, gamma=0.05, #.82, says http://www.psychopy.org/api/data.html#psychopy.data.QuestHandler is "equivalent to a 3 up 1 down standard staircase"
                 nTrials=qtrials, minVal= .01, maxVal= 4)
@@ -448,6 +451,7 @@ for rep in range(3):
                 overalltime = globalClock.getTime()
                 routineTimer = core.Clock()
 
+                
                 ##--------------------------SET TARGET OPACITY----------------------------##
 
                 if rep == 0:
@@ -550,6 +554,10 @@ for rep in range(3):
                             square_right.setAutoDraw(False)
                             square_left.setAutoDraw(False)
                             cross.setAutoDraw(False)
+                            
+                            
+                            ##--------------------CHECK FOR RESPONSE--------------------------##
+
                             if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1)):
                                 acc = 1
                             else:
