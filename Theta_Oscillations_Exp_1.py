@@ -352,7 +352,7 @@ for rep in range(3):
         if rep == 1:
             
             
-            ##---------TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART--------------##
+            ##------TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART---------##
             
             while qloop == 2:
                 inst45.setAutoDraw(True)
@@ -362,7 +362,7 @@ for rep in range(3):
                 win.flip()
 
 
-            ##---------SHOW INSTRUCTIONS AGAIN IF PTCPT HASN'T REACHED THRESHOLD--------------##
+            ##---SHOW INSTRUCTIONS AGAIN IF PTCPT HASN'T REACHED THRESHOLD----##
 
             if qloop == 1:
                 inst4 = visual.TextStim(
@@ -437,9 +437,9 @@ for rep in range(3):
 
 
 
-            ##------------------------------------------------------------------------##
-            ##------------------------TRIAL FOR LOOP BEGINS---------------------------##
-            ##------------------------------------------------------------------------##
+            ##----------------------------------------------------------------##
+            ##------------------------TRIAL FOR LOOP BEGINS-------------------##
+            ##----------------------------------------------------------------##
 
 
             for trial in trials:
@@ -452,7 +452,7 @@ for rep in range(3):
                 routineTimer = core.Clock()
 
                 
-                ##--------------------------SET TARGET OPACITY----------------------------##
+                ##----------------------SET TARGET OPACITY--------------------##
 
                 if rep == 0:
                     trialopacity = opacity*startThresh
@@ -466,7 +466,7 @@ for rep in range(3):
                 lilsquare.setOpacity(trialopacity)
 
 
-                ##----------------------SET TARGET & FLASH LOCATIONS---------------------##
+                ##----------------SET TARGET & FLASH LOCATIONS----------------##
 
                 flash_side = expmatrix[3][randomseq[trial]]
                 flash_circle_outer.setPos([(square_x + flash_dist) * flash_side, square_y])
@@ -480,7 +480,7 @@ for rep in range(3):
                 lilsquare.setPos([lil_x, lil_y])
 
 
-                ##--------------------SET START & DURATION OF STIMULI---------------------##
+                ##--------------SET START & DURATION OF STIMULI---------------##
 
                 square_start = random.randrange(square_start_min, square_start_max + 1)
                 flash_start = square_start + random.randrange(flash_start_min, flash_start_max + 1)
@@ -495,15 +495,15 @@ for rep in range(3):
                 trial_duration = square_start + square_duration
 
 
-                ##------------------------RESET TRIAL CLOCK-------------------------------##
+                ##-------------------RESET TRIAL CLOCK------------------------##
 
                 trialClock.reset()  # clock
 
 
 
-                ##--------------------------------------------------------------------##
-                ##------------------------WHILE LOOP BEGINS---------------------------##
-                ##--------------------------------------------------------------------##
+                ##------------------------------------------------------------##
+                ##------------------WHILE LOOP BEGINS-------------------------##
+                ##------------------------------------------------------------##
 
 
                 while continueRoutine and frameN <= trial_duration:
@@ -515,7 +515,7 @@ for rep in range(3):
 
                     key = event.getKeys(keyList=["l","L","a","A"])
 
-                    ##--------------------SHAPES UPDATE-------------------------------##
+                    ##----------------SHAPES UPDATE---------------------------##
 
                     if frameN == square_start:
                         square_right.tStart = t
@@ -556,7 +556,7 @@ for rep in range(3):
                             cross.setAutoDraw(False)
                             
                             
-                            ##--------------------CHECK FOR RESPONSE--------------------------##
+                            ##-------------CHECK FOR RESPONSE-----------------##
 
                             if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1)):
                                 acc = 1
@@ -570,7 +570,7 @@ for rep in range(3):
                     event.clearEvents()     # Clear the previously pressed keys; too-early key presses will automatically register as incorrect
 
 
-                    ##------------CHECK ALL IF COMPONENTS HAVE FINISHED---------------##
+                    ##--------CHECK ALL IF COMPONENTS HAVE FINISHED-----------##
 
                     if not continueRoutine:  # a component has requested a forced-end of Routine
                         break
@@ -578,7 +578,7 @@ for rep in range(3):
                         win.flip()
 
 
-                ##--------------------------RECORD DATA-------------------------------##
+                ##-------------------RECORD DATA------------------------------##
 
                 if rep < 2:
                     thisExp.addData('Trial', -trial)
