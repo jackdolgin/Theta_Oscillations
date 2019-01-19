@@ -45,9 +45,7 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
       summarise(!!dep_var := mean(!!dep_var, na.rm = TRUE)) %>%
       arrange(Stim_Sides, SquareOnset) %>%
       ungroup() %>%
-      mutate(!!dep_var := na.approx(!!dep_var, na.rm = FALSE),
-             !!dep_var := na.locf.default(!!dep_var),
-             !!dep_var := na.locf.default(!!dep_var, fromLast = TRUE)) #square onsets with an avg of NaN take the mean of the square onset accuracies before and after it ; if it's the last row in the data or after the last NA, take just the most recent NA value
+      mutate(!!dep_var := na.approx(!!dep_var, na.rm = FALSE, rule = 2)) #square onsets with an avg of NaN take the mean of the square onset accuracies before and after it ; if it's the last row in the data or after the last NA, take just the most recent NA value
   }
   
   ptcpts_tabulated <- do.call(rbind,lapply(ptcpts, ptcpt_tabulate))
