@@ -1,14 +1,5 @@
-library(tidyr)
-library(dplyr)
-library(ggplot2)
-library(DescTools)
-library(e1071)
-library(pracma)
-library(gridExtra)
-library(data.table)
-library(tables)
-library(zoo)
-library(tidyverse)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyr, dplyr, ggplot2, DescTools, e1071, pracma, gridExtra, data.table, tables, zoo, tidyverse)
 
 data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
                           block_acc_cutoff, catch, sep_vis_fields, dep_var,
