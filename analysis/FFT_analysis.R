@@ -1,13 +1,13 @@
 if (!require(devtools)) install.packages('devtools')
 devtools::install_github("stevenworthington/smisc")
-smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071", "pracma", "gridExtra", "data.table", "tables", "zoo", "tidyverse", "parallel"))
+smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071", "pracma", "gridExtra", "data.table", "tables", "zoo", "tidyverse", "parallel", "scales"))
 
 data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
-                          block_acc_cutoff, catch, sep_vis_fields, dep_var,
-                          sampling_freq, win_freq, win_size, latestart, earlyend, ptcpts, save){
+                          block_acc_cutoff, catch, sep_vis_fields, smooth_method,
+                          dep_var, sampling_freq, win_freq, win_size, latestart,
+                          earlyend, ptcpts, save_output){
   
-  grouping_constants <- quos(participant, Trials_below_block_cutoff, ExpAccmeanbefore, ExpAccmeanafter, CatchAccmean)
-  label_constants <- quos(Trials_below_block_cutoff, ExpAccmeanbefore, ExpAccmeanafter, CatchAccmean)
+  grouping_constants <- quos(participant, Trials_below_block_cutoff, Acc_blocks_unfiltered, Acc_blocks_filtered, CatchAcc)
   dep_var <- as.name(dep_var)
   
   ptcpt_tabulate <- function(participant_num){
@@ -15,11 +15,11 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
     fread(ptcpt_path, select = c(1:23)) %>%
       mutate(ExpAcc = ifelse(Opacity > 0, Acc, NA),
              CatchAcc = ifelse(Opacity > 0, NA, Acc),
-             ExpAccmeanbefore = mean(ExpAcc, na.rm = TRUE),
-             CatchAccmean = mean(CatchAcc, na.rm = TRUE)) %>%
+             Acc_blocks_unfiltered = mean(ExpAcc, na.rm = TRUE),
+             CatchAcc = mean(CatchAcc, na.rm = TRUE)) %>%
       filter(Trial > 0,
-             between(ExpAccmeanbefore, lowacc_ptcpts, highacc_ptcpts),
-             CatchAccmean > catch_trial_cutoff,
+             between(Acc_blocks_unfiltered, lowacc_ptcpts, highacc_ptcpts),
+             CatchAcc > catch_trial_cutoff,
              Opacity > catch) %>%
       mutate(Acc = ifelse(((Opacity > 0 &
                               ((Key == 'l' & CorrSide == 1) |
@@ -38,9 +38,9 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
       ungroup() %>%
       mutate_at(vars(Acc, RT),
              funs(ifelse(block_acc < block_acc_cutoff, NA, .))) %>%
-      mutate(Trials_below_block_cutoff = sum(block_acc < block_acc_cutoff),
-             ExpAccmeanafter = mean(Acc, na.rm = TRUE)) %>%
-      filter(between(ExpAccmeanafter, lowacc_ptcpts, highacc_ptcpts)) %>%
+      mutate(Trials_below_block_cutoff = sum(block_acc < block_acc_cutoff)/n(),
+             Acc_blocks_filtered = mean(Acc, na.rm = TRUE)) %>%
+      filter(between(Acc_blocks_filtered, lowacc_ptcpts, highacc_ptcpts)) %>%
       group_by(SquareOnset, Stim_Sides, !!!grouping_constants) %>%
       summarise_at(vars(Acc, RT), funs(mean(., na.rm = TRUE))) %>%
       arrange(Stim_Sides, SquareOnset) %>%
@@ -59,13 +59,13 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
     summarise(!!dep_var := mean(!!dep_var)) %>%
     ggplot(aes(SquareOnset, !!dep_var, group=Stim_Sides, color=Stim_Sides)) +
       geom_line(alpha = I(2/10), color="grey", show.legend = FALSE) +
-      stat_smooth(size=1, span=0.2, se=FALSE, show.legend = FALSE) +
-      labs(title = "Accuracy by Square Onset Time, Loess-Smoothed",
+      stat_smooth(size=1, method = smooth_method, span=0.2, se=FALSE, show.legend = FALSE) +
+      labs(title = paste0(dep_var, " by Square Onset Time, ", smooth_method, "-Smoothed"),
            x = "Square Onset (ms)",
            caption = paste("Not fft'ed; 2 data points per x-value per target side per participant\n", as.character(length(ptcpts_remaining)), "participants averaged")) +
         theme(plot.title = element_text(hjust = 0.5),
               plot.subtitle = element_text(hjust = 0.5)) +
-    facet_wrap(~participant, ncol = 1)
+    facet_wrap(~participant, ncol = 1, scales = 'free_x')
   
   
   #---------#
@@ -103,11 +103,10 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
     group_by(!!!grouping_constants) %>%
     summarise() %>%
     ungroup() %>%
-    mutate_at(vars(!!!label_constants), funs(paste(quo_name(quo(.)),"=", .))) %>%
-    unite(lab, !!!label_constants, sep = "\n", remove = FALSE)
+    mutate_at(vars(!!!tail(grouping_constants,-1)), funs(paste(quo_name(quo(.)),"=", percent(.)))) %>%
+    unite(lab, !!!tail(grouping_constants,-1), sep = "\n", remove = FALSE)
   
-  fft_facets <-
-    rbind((amplitudes %>% mutate(participant = "All")), amplitudes) %>%
+  fft_facets <- rbind((amplitudes %>% mutate(participant = "All")), amplitudes) %>%
     group_by(participant, Hz) %>%
     summarise_all(mean) %>%
     gather(Flash_and_or_field, Magnitude, -Hz, -c(!!!grouping_constants)) %>%
@@ -120,25 +119,27 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
     theme(plot.title = element_text(hjust = 0.5),
           plot.subtitle = element_text(hjust = 0.5),
           panel.grid.major = element_line(colour="white", size = 3)) +
-    facet_wrap(~ factor(participant, levels = c("All", ptcpts_remaining)), ncol = 1) +
-    geom_text(data = as.data.frame(graph_label), aes(label = lab, x = 16, y = 70), inherit.aes = FALSE)
+    facet_wrap(~ factor(participant, levels = c("All", ptcpts_remaining)), ncol = 1, scales = 'free') +
+    geom_text(data = as.data.frame(graph_label), vjust = .9, hjust = .9,
+              aes(label = lab, x = 16, y = 40), inherit.aes = FALSE)
   
   grid.arrange(time_course_graph_facets, fft_facets, ncol = 2)
-  if (save == "Yes"){
+  if (save_output == "Yes"){
       side_by_side <- arrangeGrob(time_course_graph_facets, fft_facets, ncol = 2)
-      ggsave(paste0("data/Time-Series_+_FFT_Plots_", dep_var, "_low_", lowacc_ptcpts,
-                    "_high_", highacc_ptcpts, ".pdf"),
-                    side_by_side, limitsize = FALSE, width = 25, height = 100)
+      ggsave(file.path("analysis", paste0("Time-Series_+_FFT_Plots_", dep_var, "_low_", lowacc_ptcpts,
+                    "_high_", highacc_ptcpts, ".pdf")),
+                    side_by_side, limitsize = FALSE, width = 25, height = length(ptcpts_remaining)*3 + 5)
   }
 }
 
-data_graphing(lowacc_ptcpts = .1, highacc_ptcpts = 1.1,
-           catch_trial_cutoff = .85, block_acc_cutoff = .0,
+data_graphing(lowacc_ptcpts = .1, highacc_ptcpts = 1.1, #fraction correct
+           catch_trial_cutoff = .85, block_acc_cutoff = .0, #fraction correct
            catch = 0, #-1/0 to include/exclude catch trials in analyses
            sep_vis_fields = "No", #Use "Yes" and "No"
+           smooth_method = "loess", # see geom_smooth documentation for smoothing options
            dep_var = "RT", #Use "Acc" or "RT"
            sampling_freq = 1/60,
-           win_freq = .001, win_size = .05,
-           latestart = 0,  earlyend = 0, #unit = seconds
+           win_freq = .001, win_size = .05, # in seconds
+           latestart = 0,  earlyend = 0, #exclude data t seconds greater than min or less than max cue-probe interval time
            ptcpts = 201:230,
-           save = "No") #Use "Yes" and "No"
+           save_output = "Yes") #Use "Yes" and "No"
