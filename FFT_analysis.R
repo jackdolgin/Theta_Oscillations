@@ -1,6 +1,6 @@
 if (!require(devtools)) install.packages('devtools')
 devtools::install_github("stevenworthington/smisc")
-smisc::ipak(c("tidyr", "dplyr", "ggplot2", "DescTools", "e1071", "pracma", "gridExtra", "data.table", "tables", "zoo", "tidyverse"))
+smisc::ipak(c("tidyr", "dplyr", "ggplot2", "DescTools", "e1071", "pracma", "gridExtra", "data.table", "tables", "zoo", "tidyverse", "parallel"))
 
 data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
                           block_acc_cutoff, catch, sep_vis_fields, dep_var,
@@ -90,14 +90,14 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
         summarise(!!dep_var := mean(!!dep_var)) %>%
         spread(Stim_Sides, !!dep_var)
     }
-    as.data.frame(t(mapply(slidingwindow, wins))) %>%
+    as.data.frame(t(mcmapply(slidingwindow, wins))) %>%
       modify(as.numeric) %>%
   	  mutate_at(vars(Same, Opposite), funs(Mod(fft(detrend(.)*hann)))) %>%
       modify(as.numeric) %>%
       mutate(Hz = (row_number()-1)/(n()*win_freq))
   }
   
-  amplitudes <- do.call(rbind,lapply(ptcpts_remaining, amplitude_func)) #may take several minutes to run depending on number of ptcpts
+  amplitudes <- do.call(rbind,mclapply(ptcpts_remaining, amplitude_func)) #may take several minutes to run depending on number of ptcpts
   
   graph_label <- amplitudes %>%
     group_by(!!!grouping_constants) %>%
