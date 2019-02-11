@@ -1,6 +1,6 @@
 if (!require(devtools)) install.packages('devtools')
 devtools::install_github("stevenworthington/smisc")
-smisc::ipak(c("tidyr", "dplyr", "ggplot2", "DescTools", "e1071", "pracma", "gridExtra", "data.table", "tables", "zoo", "tidyverse", "parallel"))
+smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071", "pracma", "gridExtra", "data.table", "tables", "zoo", "tidyverse", "parallel"))
 
 data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
                           block_acc_cutoff, catch, sep_vis_fields, dep_var,
@@ -11,7 +11,7 @@ data_graphing <- function(lowacc_ptcpts, highacc_ptcpts, catch_trial_cutoff,
   dep_var <- as.name(dep_var)
   
   ptcpt_tabulate <- function(participant_num){
-    ptcpt_path <- paste0("data/", participant_num, "/", participant_num, ".csv")
+    ptcpt_path <- file.path("data", participant_num, paste0(participant_num, ".csv"))
     fread(ptcpt_path, select = c(1:23)) %>%
       mutate(ExpAcc = ifelse(Opacity > 0, Acc, NA),
              CatchAcc = ifelse(Opacity > 0, NA, Acc),
