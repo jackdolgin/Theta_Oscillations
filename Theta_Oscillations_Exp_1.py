@@ -547,7 +547,7 @@ for rep in range(3):
                     elif frameN == trial_duration:
                          key = ['nope']
                     if len(key) > 0:
-                        if frameN < lilend:
+                        if frameN < lilstart:
                             lenkeylist += 1
                         else:
                             continueRoutine = False
