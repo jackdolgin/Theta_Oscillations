@@ -1,3 +1,4 @@
+# PsychoPy is required for this experiment
 from psychopy import locale_setup, sound, gui, visual, core, data, event, logging, clock
 import numpy as np  # whole numpy lib is available, prepend 'np.'
 from numpy.random import random, randint, normal, shuffle
