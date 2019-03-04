@@ -5,8 +5,8 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools",
               "e1071", "pracma", "gridExtra", "data.table",
               "tables", "zoo", "tidyverse", "parallel", "scales"))
 
-# Main function begins (encompasses other functions)                            # Up 90 seconds for graphing, on Windows can be > 3 min
-data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch, 
+# Main function begins (encompasses other functions)                            # Can take several few minutes to run, especially on Windows
+data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
                           lowacc_ptcpts_pre_block_filter,
                           highacc_ptcpts_pre_block_filter,
                           lowacc_ptcpts_post_block_filter,
@@ -95,7 +95,7 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
                   show.legend = FALSE) +
       labs(title = paste0(dep_var, " by Cue-Target Interval, ", smooth_method,
                           "-Smoothed"),
-           x = "Square Onset (ms)",
+           x = "Cue-Target Interval (ms)",
            caption = paste("Not fft'ed; 2 data points per x-value per target side per participant\n",
                            as.character(length(ptcpts_remaining)),
                            "participants averaged")) +
@@ -177,15 +177,11 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
     geom_text(data = as.data.frame(graph_label), vjust = 1, hjust = 1,          # Sets location for label overlayed onto graph
               aes(label = lab, x = Inf, y = Inf), inherit.aes = FALSE)
  
-  grid.arrange(time_series_facets, fft_facets, ncol = 2, heights=c(4, 4), widths=c(1:2))                        # Combines time series and FFT graphs into one plot (unsaved version)
-  
-  # Saves data frame to 'analysis' folder if 'save_output' argument == 'Yes'
-  if (save_output == "Yes"){
-      side_by_side <- arrangeGrob(time_series_facets, fft_facets, ncol = 2)     # Combines time series and FFT graphs into one plot (saved version)
-      ggsave(file.path("analysis", "Time-Series_+_FFT_Plots_.pdf"),
-             side_by_side, limitsize = FALSE, width = 25,
-             height = length(ptcpts_remaining) * 3 + 5)
-  }
+  # Saves graph to 'analysis' folder
+  side_by_side <- arrangeGrob(time_series_facets, fft_facets, ncol = 2)     # Combines time series and FFT graphs into one plot
+  ggsave(file.path("analysis", "Time-Series_+_FFT_Plots_.pdf"),
+         side_by_side, limitsize = FALSE, width = 25,
+         height = length(ptcpts_remaining) * 3 + 5)
 }
 
 
@@ -195,7 +191,7 @@ data_graphing(catch_trial_cutoff = .85,                                         
               block_acc_cutoff = .25,                                           # Converts a trial's accuracy to NA if block's accuracy below this value
               catch = 0,                                                        # -1/0 to include/exclude catch trials in analyses
               lowacc_ptcpts_pre_block_filter = .35,                             # Filters participants by their accuracy before their blocks below 'block_acc_cutoff' have been interpolated over
-              highacc_ptcpts_pre_block_filter = 9,                              # Line above is the floor of the filter, this line is the ceiling
+              highacc_ptcpts_pre_block_filter = .9,                              # Line above is the floor of the filter, this line is the ceiling
               lowacc_ptcpts_post_block_filter = .35,                            # Filters participants by their accuracy after their blocks below 'block_acc_cutoff' have been interpolated over 
               highacc_ptcpts_post_block_filter = .9,                            # Line above is the floor of the filter, this line is the ceiling
               jitter = c(-2:2),                                                 # Use "-2:2" to keep all jitter levels; or -2, -1, 0, 1, and/or 2 to refer to jitter level, separate non-consecutive jitters by commas (negative means below staircase threshold, 0 means at staircase threshold, positive means above)
