@@ -44,8 +44,8 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
              block = RoundTo(Trial, 44, ceiling)/44,                            # Creates column indicating trial's block
              CTI = RoundTo(lilsquareStartTime - flash_circleEndTime,
                                    sampling_freq),
-             RT = ifelse(Acc == 1 | ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms 
-                         ButtonPressTime - lilsquareStartTime, NA),   
+             RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms 
+                         ButtonPressTime - lilsquareStartTime, NA),  
              Stim_Sides = as.character(                                         
                ifelse(CorrSide == FlashSide, "Congruent", "Incongruent")),      #                indicating whether cue was congruent or incongruent
              CorrSide = if_else(CorrSide == 1, "Right", "Left"),                #                indicating which side the target appeared on
@@ -179,7 +179,7 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
  
   # Saves graph to 'analysis' folder
   side_by_side <- arrangeGrob(time_series_facets, fft_facets, ncol = 2)     # Combines time series and FFT graphs into one plot
-  ggsave(file.path("analysis", "Time-Series_+_FFT_Plots_.pdf"),
+  ggsave(file.path("analysis", "Time-Series_+_FFT_Plots.pdf"),
          side_by_side, limitsize = FALSE, width = 25,
          height = length(ptcpts_remaining) * 3 + 5)
 }
