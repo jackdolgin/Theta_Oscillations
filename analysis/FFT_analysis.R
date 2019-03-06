@@ -49,8 +49,8 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
              Stim_Sides = as.character(                                         
                ifelse(CorrSide == FlashSide, "Congruent", "Incongruent")),      #                indicating whether cue was congruent or incongruent
              CorrSide = if_else(CorrSide == 1, "Right", "Left"),                #                indicating which side the target appeared on
-             Stim_Sides = case_when(sep_vis_fields == "No" ~ Stim_Sides,        # Overwrites 'Stim_Sides' column if 'sep_vis_fidels' parameter == 'No' to include which side of screen target was on,
-                TRUE ~ paste(Stim_Sides, CorrSide, sep = "_"))) %>%             # as well as whether it was congruent with cue; if 'sep_vis_fidels' parameter == 'Yes', leaves 'StimSides' unchanged
+             Stim_Sides = case_when(sep_vis_fields == "No" ~ Stim_Sides,        # Overwrites 'Stim_Sides' column if 'sep_vis_fidels' parameter == 'Yes' to include which side of screen target was on,
+                TRUE ~ paste(Stim_Sides, CorrSide, sep = "_"))) %>%             # as well as whether it was congruent with cue; if 'sep_vis_fields' parameter == 'No', leaves 'StimSides' unchanged
       group_by(block) %>%
       mutate(block_acc = mean(Acc)) %>%                                         # Creates column indicating block's mean accuracy
       ungroup() %>%
@@ -201,6 +201,6 @@ data_graphing(catch_trial_cutoff = .85,                                         
               sampling_freq = 1/60,                                             # Equals spacing between CTI intevals (in seconds)
               win_freq = .001, win_size = .05,                                  # Set parameters for sliding window (in seconds)
               latestart = 0,  earlyend = 0,                                     # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.836]) - 'earlyend'); units = seconds
-              ptcpts = 201:230,                                                 # Error w/ PsychoPy coding for ptcpts 201-205
+              ptcpts = 201:230,                                                 # Extra jittering for ptcpts 201-205
               output = "graph",                                                 # Use "graph", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
               save_output = "Yes")                                              # Use "Yes" and "No" (if 'no', table outputs will still be visible in R)
