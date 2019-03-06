@@ -28,7 +28,11 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
     rawdata <- fread(ptcpt_path, select = c(1:23))                              # Reads in participant data (the 'select' part is because PsychoPy created an empty column at the end of the data frame for the first few participants, which meant those dataframes had different dimensions than subsequent data frames, which 'do.call' doesn't like)
     rawfactors <- sort(unique((rawdata %>% filter(Trial > 0))$Opacity))
     rawdata %>%
-      mutate(ExpAcc = ifelse(Opacity > 0, Acc, NA),                             # Creates column indicating accuracy for non-catch trials, and indicating NA for catch trials
+      mutate(Acc = ifelse(((Opacity > 0 &                                       # Overwrites 'Acc' column, since original PsychoPy code was written to count any trial with
+                              ((Key == 'l' & CorrSide == 1) |                   # a false press as incorrect; this code won't change anything for newest code
+                                 Key == 'a' & CorrSide == -1)) |
+                             (Opacity == 0 & Key == 'nope')), 1, 0),
+             ExpAcc = ifelse(Opacity > 0, Acc, NA),                             # Creates column indicating accuracy for non-catch trials, and indicating NA for catch trials
              CatchAcc = ifelse(Opacity > 0, NA, Acc),                           #                indicating accuracy for catch trials, and indicating NA for non-catch trials
              Acc_blocks_unfiltered = mean(ExpAcc, na.rm = TRUE),                #                indicating mean accuracy for non-catch trials; note this is created before we've filtered for 'block_acc_cutoff', unlike 'Acc_blocks_filtered'
              CatchAcc = mean(CatchAcc, na.rm = TRUE)) %>%                       #                indicating mean accuracy for catch trials
@@ -37,11 +41,7 @@ data_graphing <- function(catch_trial_cutoff,  block_acc_cutoff, catch,
              CatchAcc > catch_trial_cutoff,                                     #             participants whose catch accuracy is below desired threshold
              Trial > 0,                                                         #             practice trials
              Opacity > catch) %>%                                               #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
-      mutate(Acc = ifelse(((Opacity > 0 &                                       # Overwrites 'Acc' column, since original PsychoPy code was written to count any trial with
-                              ((Key == 'l' & CorrSide == 1) |                   # a false press as incorrect; this code won't change anything for newest code
-                                Key == 'a' & CorrSide == -1)) |
-                           (Opacity == 0 & Key == 'nope')), 1, 0),
-             block = RoundTo(Trial, 44, ceiling)/44,                            # Creates column indicating trial's block
+      mutate(block = RoundTo(Trial, 44, ceiling)/44,                            # Creates column indicating trial's block
              CTI = RoundTo(lilsquareStartTime - flash_circleEndTime,
                                    sampling_freq),
              RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms 
