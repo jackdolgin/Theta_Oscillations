@@ -29,9 +29,9 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
              Opacity > catch) %>%                                               #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
       mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                       # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
       filter(between(Acc_prefilter, lowacc_prefilter, highacc_prefilter)) %>%   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range                                            #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
-      mutate(block = RoundTo(Trial, 54, ceiling)/54,                            # Creates column indicating trial's block
+      mutate(block = RoundTo(Trial, 54, ceiling) / 54,                            # Creates column indicating trial's block
              CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
-                                   1/60), sampling_freq),
+                                   1 / 60), sampling_freq),
              RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
                          ButtonPressTime - lilsquareStartTime, NA),
              Stim_Sides = as.character(
@@ -44,7 +44,7 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
       group_by(Opacity > 0) %>%
       mutate(rown = row_number(),
              miniblock = ifelse(Opacity > 0,                                    # Creates column indicating trial's mini-block (every 16 trials the opacity was readjusted)
-                                RoundTo(rown, 16, ceiling)/16, NA)) %>%
+                                RoundTo(rown, 16, ceiling) / 16, NA)) %>%
       group_by(miniblock) %>%
       mutate(miniblock_avg = mean(Acc)) %>%
       ungroup() %>%
@@ -53,7 +53,7 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
                                                     mini_block_floor,           # or mini_block was not in the desired range
                                                     mini_block_ceil),
                                            NA, .))) %>%              
-      mutate(Trials_filtered_out = sum(is.na(Acc))/n(),
+      mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
              Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered for block_floor, unlike Acc_prefilter
       filter(between(Acc_postfilter, lowacc_postfilter, highacc_postfilter)) %>%# Filters out participants whose non-catch, post-block-filtering accuracy is outside of desired range 
       group_by(CTI, Stim_Sides, !!!grouping_constants) %>%
@@ -74,8 +74,8 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
   amplitudes <- ptcpts_tabulated %>%
     pivot_wide(CTI:CatchAcc, Stim_Sides, !!dep_var) %>%
     group_by(participant) %>%
-    mutate_at(vars(!!Sides), funs(Mod(fft(detrend(.)*hann)))) %>%               # Detrends, multiplies by Hanning window, applies FFT, and then takes magnitude   
-    mutate(Hz = (row_number()-1)/(n()*sampling_freq)) %>%
+    mutate_at(vars(!!Sides), funs(Mod(fft(detrend(.) * hann)))) %>%             # Detrends, multiplies by Hanning window, applies FFT, and then takes magnitude   
+    mutate(Hz = (row_number()-1) / (n() * sampling_freq)) %>%
     ungroup() %>%
     select(-CTI)
   
@@ -103,13 +103,13 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
     group_by(CTI, Stim_Sides, !!!grouping_constants) %>%
     summarise(!!dep_var := mean(!!dep_var)) %>%                                 # Keeps either RT or Acc column—depending on whether 'dep_var' parameter == 'RT' or 'Acc'
     ggplot(aes(CTI, !!dep_var, group = Stim_Sides, color = Stim_Sides)) +       # CTI is x axis, dep_var is y axis
-    geom_line(alpha = I(2/10), color = "grey", show.legend = FALSE) +           # Graphs unsmoothed data in light gray
+    geom_line(alpha = I(2 / 10), color = "grey", show.legend = FALSE) +         # Graphs unsmoothed data in light gray
     stat_smooth(method = smooth_method, span = 0.2, se = FALSE,                 # Smoothes data depending on 'smooth_method' parameter
                 size = .5, show.legend = FALSE) +
     labs(title = paste0(dep_var, " by Cue-Target Interval, ", smooth_method,
                         "-Smoothed"),
          x = "Cue-Target Interval (ms)",
-         caption = paste("Not fft'ed;", 120*sampling_freq,                      # 2 * 60 = 120; the more clumping, the more we multiply the 2 data points by
+         caption = paste("Not fft'ed;", 120 * sampling_freq,                      # 2 * 60 = 120; the more clumping, the more we multiply the 2 data points by
                          "data points/bin/target side/participant\n",
                          as.character(length(ptcpts_remaining)),
                          "participants averaged")) +
@@ -135,7 +135,8 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
     gather(Flash_and_or_field, Magnitude, -Hz, -c(!!!grouping_constants)) %>%
     ggplot(aes(Hz, Magnitude, color = Flash_and_or_field)) +
     geom_line() +
-    scale_x_continuous(breaks = c(4, 8), limits = c(0, max(amplitudes$Hz)/2)) + # Creates thick vertical lines at 4 Hz and 8 Hz, and sets x axis range to 0-16
+    scale_x_continuous(breaks = c(4, 8),
+                       limits = c(0, max(amplitudes$Hz) / 2)) +                 # Creates thick vertical lines at 4 Hz and 8 Hz, and sets x axis range to 0-16
     labs(title = paste("FFT of", as.character(dep_var)),
          caption = paste("Data from", as.character(length(ptcpts_remaining)),
                          "participants")) +
@@ -169,7 +170,7 @@ data_graphing(catch_trial_cutoff = .85,                                         
               sep_vis_fields = "No",                                            # Use 'No' and 'Yes'; 'No' means incongruent cue and target trials are analyzed differently at each CTI than trials with congruent cue and target; 'Yes' means we further divide analyses by which side of screen target appeared, yielding four conditions (congruent/incongruent and left/right)
               smooth_method = "loess",                                          # See geom_smooth documentation for available smoothing methods
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
-              sampling_freq = 1/60,                                             # Equals spacing between CTI intevals (in seconds)
+              sampling_freq = 1 / 60,                                           # Equals spacing between CTI intevals (in seconds)
               latestart = 0,  earlyend = 0,                                     # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
               ptcpts = 201:230,
               output = "graph",                                                 # Use "graph", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
