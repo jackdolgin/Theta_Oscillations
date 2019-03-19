@@ -29,7 +29,7 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
              Opacity > catch) %>%                                               #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
       mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                       # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
       filter(between(Acc_prefilter, lowacc_prefilter, highacc_prefilter)) %>%   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range                                            #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
-      mutate(block = RoundTo(Trial, 54, ceiling) / 54,                            # Creates column indicating trial's block
+      mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
              CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
                                    1 / 60), sampling_freq),
              RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
@@ -109,7 +109,7 @@ data_graphing <- function(catch_trial_cutoff, block_floor, mini_block_floor,
     labs(title = paste0(dep_var, " by Cue-Target Interval, ", smooth_method,
                         "-Smoothed"),
          x = "Cue-Target Interval (ms)",
-         caption = paste("Not fft'ed;", 120 * sampling_freq,                      # 2 * 60 = 120; the more clumping, the more we multiply the 2 data points by
+         caption = paste("Not fft'ed;", 120 * sampling_freq,                    # 2 * 60 = 120; the more clumping, the more we multiply the 2 data points by
                          "data points/bin/target side/participant\n",
                          as.character(length(ptcpts_remaining)),
                          "participants averaged")) +
