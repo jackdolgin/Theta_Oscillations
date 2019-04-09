@@ -194,19 +194,19 @@ lilsquare = visual.Rect(
     lineColor = shapecolor, fillColor = lilcolor, depth = -1.0)
 
 task_diagram_big_squares = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_1_625.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_flash = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_2_625.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_lilsquare = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_3_625.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_response = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_4_625.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_response.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 
