@@ -210,10 +210,15 @@ task_diagram_response = visual.ImageStim(
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 
+
+
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
+catch_timing = [round(x * intervals * 1.0/catchtrials) for x in range(0, catchtrials)] # spaces out when the lilsquare comes on after the flash for catch trials
+np.random.shuffle(catch_timing)
+
 expmatrix = [np.concatenate([np.repeat(range(-1, 2, 2), int(liltrials/2)), np.repeat(range(-1, 2, 2), int(catchtrials/2))]), #side of screen of lil
-                reps * range(0, intervals * stagger, stagger) + [round(x * intervals * 1.0/catchtrials) + 1 for x in range(0, catchtrials)], #part after the + spaces out when the lilsquare comes on after the flash for catch trials
+                reps * range(0, intervals * stagger, stagger) + catch_timing,
                 [opacity] * liltrials + [0] * catchtrials, #opacity of lil
                 np.concatenate([np.repeat([-1, -1, -1, 1, 1, 1, 1, -1], int(liltrials/8)), np.repeat([-1, 1], int(catchtrials/2))]), # side of screen of flash
                 np.asarray([random.randrange(square_x - square_size/2 + lilsize/2, square_x + square_size/2 - lilsize/2) for x in range(trials)]),

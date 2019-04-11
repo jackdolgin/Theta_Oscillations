@@ -76,6 +76,8 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   
   observed <- amplitude(cmbd_pcpts, participant)
   
+  pcpts_remaining <- unique(cmbd_pcpts$participant)                           # Creates vector of remaining participant numbers after 'pcpts_combine' filtering
+  
   
   # Conditionally returns data frame of prelim participant or post-FFT data, exits function
   if (output == "prelim_table") {
@@ -96,8 +98,6 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   } else if (output == "graph_all_pcpts"){
     
     # Output Individuals' Plots ------------------------------------------------
-  
-    pcpts_remaining <- unique(cmbd_pcpts$participant)                           # Creates vector of remaining participant numbers after 'pcpts_combine' filtering
   
     # Produces left half of final graph
     ts_facets <- rbind((mutate(cmbd_pcpts0, participant = "All")),              # Copies each row in 'cmbd_pcpts' except 'participant' = 'All', which creates the top graph on the left labeled 'All'
@@ -221,7 +221,7 @@ data_graphing(catch_cutoff = .85,                                               
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
               samp_freq = 1 / 60,                                               # Equals spacing between CTI intevals (in seconds)
               latestart = 0, earlyend = 0,                                      # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
-              pcpts = 301:315,
+              pcpts = c(301:317),
               output = "graph_stats",                                           # Use "graph_stats", "graph_all_pcpts", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
               save_output = "Yes",                                              # Use "Yes" and "No" (if 'no', table outputs will still be visible in R)
               clumps = 3,                                                       # Use 1 (no clumping) and 3 (each bin is the average of itself and its two neighbors)
