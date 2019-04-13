@@ -71,8 +71,8 @@ cross_size = .07
 square_mult = 528
 
 sides_x = int(square_mult / 2)
-sides_y = int(-square_mult * math.sqrt(3) / 6)
-top_y = int(square_mult * math.sqrt(3) / 3)
+sides_y = int(square_mult * math.sqrt(3) / 6)
+bottom_y = int(-square_mult * math.sqrt(3) / 3)
 
 
 ##-----------------------------SHAPE COLORS-----------------------------------##
@@ -144,11 +144,11 @@ inst1c = visual.TextStim(
     win = win, text = "Then on some trials you will see a little square inside one of the three squares, and on other trials you will not see any little square. 75% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst2 = visual.TextStim(
-    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left, top, or right of the screen by pressing, respectively, the \"A\", \"T\", or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision. Finally, please stay in the head mount during throughout the experiment.\n\nPress space to continue or \"B\" to go back.",
+    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left, bottom, or right of the screen by pressing, respectively, the \"A\", \"B\", or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision. Finally, please stay in the head mount during throughout the experiment.\n\nPress space to continue or \"B\" to go back.",
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst3 = visual.TextStim(
-    win = win, text = "Again, these are practice trials, and if you do well enough on the practice trials, you will move on directly to the main experiment; otherwise you'll get a second chance to improve on the practice. As a reminder, when the little square appears, you will have one second to indicate whether it was on the left, top, or right of the screen by pressing, respectively, the \"A\", \"T\", or \"L\" keys.\n\nPress space to begin or \"B\" to go back.",
+    win = win, text = "Again, these are practice trials, and if you do well enough on the practice trials, you will move on directly to the main experiment; otherwise you'll get a second chance to improve on the practice. As a reminder, when the little square appears, you will have one second to indicate whether it was on the left, bottom, or right of the screen by pressing, respectively, the \"A\", \"B\", or \"L\" keys.\n\nPress space to begin or \"B\" to go back.",
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst45 = visual.TextStim(
@@ -176,9 +176,9 @@ cross = visual.ShapeStim(
     [0, 0], [-.1501 * cross_size, 0], [0, 0]], lineWidth = 2,
     lineColor = crosscolor, depth = -1.0)
 
-square_top = visual.Rect(
+square_bottom = visual.Rect(
     win = win, units = 'pix', height = square_size, width = square_size,
-    pos = (0, top_y), lineColor = shapecolor,
+    pos = (0, bottom_y), lineColor = shapecolor,
     fillColor = shapecolor, depth = -1.0)
 
 square_right = visual.Rect(
@@ -222,7 +222,7 @@ task_diagram_response = visual.ImageStim(
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
 target_x = np.concatenate([np.repeat(range(-1, 2), int(.75 * liltrials/3)), np.repeat(range(-1, 2), int(.25 * liltrials/3)), np.repeat(range(-1, 2), int(catchtrials/3))])
-target_y = np.concatenate([np.repeat([sides_y, top_y, sides_y], .75 * int(liltrials/3)), np.repeat([sides_y, top_y, sides_y], int(.25 * liltrials/3)), np.repeat([sides_y, top_y, sides_y], int(catchtrials/3))])
+target_y = np.concatenate([np.repeat([sides_y, bottom_y, sides_y], .75 * int(liltrials/3)), np.repeat([sides_y, bottom_y, sides_y], int(.25 * liltrials/3)), np.repeat([sides_y, bottom_y, sides_y], int(catchtrials/3))])
 valid_timing = int(.75 * reps) * range(0, intervals * stagger, stagger)
 invalid_timing = int(.25 * reps) * range(0, intervals * stagger, stagger)
 np.random.shuffle(invalid_timing)
@@ -234,7 +234,7 @@ expmatrix = [target_x,
             valid_timing + invalid_timing + catch_timing,
             [opacity] * liltrials + [0] * catchtrials, #opacity of lil
             np.concatenate([np.repeat(range(-1, 2), round(.75 * liltrials/3)), np.repeat([0,1], int(intervals * 2.0 / 3)), np.repeat([-1,1], int(intervals * 2.0 / 3)), np.repeat([-1,0], int(intervals * 2.0 / 3)), np.repeat(range(-1, 2), int(catchtrials/3))]), # side of screen of flash
-            np.concatenate([np.repeat([sides_y, top_y, sides_y], int(.75 * liltrials/3)), np.repeat([top_y, sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,top_y], int(intervals * 2.0 / 3)), np.repeat([sides_y, top_y, sides_y], int(catchtrials/3))]),
+            np.concatenate([np.repeat([sides_y, bottom_y, sides_y], int(.75 * liltrials/3)), np.repeat([bottom_y, sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,bottom_y], int(intervals * 2.0 / 3)), np.repeat([sides_y, bottom_y, sides_y], int(catchtrials/3))]),
             np.asarray([random.randrange(sides_x * target_x[i] - square_size/2 + lilsize/2, sides_x * target_x[i] + square_size/2 - lilsize/2) for i in range(trials)]),
             np.asarray([random.randrange(target_y[i] - square_size/2 + lilsize/2, target_y[i] + square_size/2 - lilsize/2) for i in range(trials)])]
 
@@ -501,7 +501,7 @@ for rep in range(3):
                     t = trialClock.getTime()
                     frameN += 1  # number of completed frames (so 0 is the first frame)
 
-                    key = event.getKeys(keyList = ["l","L","a","A", "t", "T"])
+                    key = event.getKeys(keyList = ["l","L","a","A", "b", "b"])
 
                     ##----------------SHAPES UPDATE---------------------------##
 
@@ -510,7 +510,7 @@ for rep in range(3):
                         square_right.frameStart = frameN
                         square_right.setAutoDraw(True)
                         square_left.setAutoDraw(True)
-                        square_top.setAutoDraw(True)
+                        square_bottom.setAutoDraw(True)
                     elif frameN == flash_start:
                         outer_frame.tStart = t
                         outer_frame.frameStart = frameN
@@ -536,13 +536,13 @@ for rep in range(3):
                             continueRoutine = False
                             square_right.setAutoDraw(False)
                             square_left.setAutoDraw(False)
-                            square_top.setAutoDraw(False)
+                            square_bottom.setAutoDraw(False)
                             cross.setAutoDraw(False)
 
 
                             ##-------------CHECK FOR RESPONSE-----------------##
 
-                            if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['t'] and lil_side == 0)):
+                            if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['b'] and lil_side == 0)):
                                 acc = 1
                             else:
                                 acc = 0
