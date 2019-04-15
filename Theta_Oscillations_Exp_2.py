@@ -72,7 +72,7 @@ square_mult = 528
 
 sides_x = int(square_mult / 2)
 sides_y = int(square_mult * math.sqrt(3) / 6)
-bottom_y = int(-square_mult * math.sqrt(3) / 3)
+bottom_y = int(-square_mult * math.sqrt(3) / 4)
 
 
 ##-----------------------------SHAPE COLORS-----------------------------------##
