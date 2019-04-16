@@ -10,7 +10,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
                           mini_block_ceil, catch, pre_floor, pre_ceil,
                           post_floor, post_ceil, sep_vis_fields, smooth_method,
                           dep_var, samp_freq, latestart, earlyend, pcpts,
-                          output, save_output, clumps, shuff, pval){
+                          output, save_output, clumps, xaxisvals, shuff, pval){
 
   grouping_constants <- quos(participant, Trials_filtered_out, Acc_prefilter,   # Columns that are frequently used for grouping, variable means
                              Acc_postfilter, CatchAcc)                          # don't have to type them out every time we use them for grouping
@@ -167,6 +167,13 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
     
     set.seed(123)
     
+    
+    # Determines confidence intervals
+    observed_conf <- observed %>%
+      group_by(Hz) %>%
+      summarise_at(vars(locations), funs(qnorm(.975) * std_err(.))) %>%
+      gather(Location, Conf_Int, -Hz)
+
     # Produces and save graph
     amps <- shuffle(.data = cmbd_pcpts, n = shuff,
                     perm_cols = c("participant", locations)) %>%
@@ -176,11 +183,13 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       summarise_at(vars(locations), mean) %>%
       group_by(Hz) %>%
       summarise_at(vars(locations), funs(quantile(., probs = 1 - pval))) %>%
-      combine(observed %>% group_by(Hz) %>% summarise_at(vars(locations), mean), 
+      combine(observed %>% group_by(Hz) %>% summarise_at(vars(locations), mean),
               names = (c("Significance Cutoff", "Observed Data"))) %>%
-      gather(Location, Magnitude, -c(Hz, source))
+      gather(Location, Magnitude, -c(Hz, source)) %>%
+      right_join(observed_conf, by = c("Hz", "Location"))
     (amps %>%
-      ggplot(aes(Hz, Magnitude, col = Location, linetype = source)) +
+      ggplot(aes(Hz, Magnitude, col = Location, linetype = source, 
+                 ymin = Magnitude - Conf_Int, ymax = Magnitude + Conf_Int)) +
       geom_line(size = 1.5) +
       scale_linetype_manual(values = c("dashed", "solid")) +
       labs(title = paste("FFT of Target", dep_var),
@@ -188,19 +197,21 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
                             "participants"),
            col = "Target Location", linetype = "",
          caption = paste("Significance threshold at p <", as.character(pval))) +
+        geom_errorbar(data = filter(amps, source == "Observed Data"),
+                        position = position_dodge(width=0.9), width = 0.2) +
+        scale_color_viridis_d(end = .7, option = "C") +
       guides(col = guide_legend(order = 1)) +
-      geom_point(size = 3, data = amps %>% spread(source, Magnitude) %>% 
+      geom_point(size = 3, data = amps %>% spread(source, Magnitude) %>%
                    filter(`Observed Data` > `Significance Cutoff`) %>%
-                   select(-`Significance Cutoff`) %>%
-                   gather(source, Magnitude, -Hz, -Location)) +
-      scale_x_continuous(name = "Frequency (Hz)", limits = c(0, 10), 
-               breaks = seq(0, 10, 1 / (length(unique(amps$Hz)) * samp_freq))) +
+                   select(-c(`Significance Cutoff`, Conf_Int)) %>%
+                   gather(source, Magnitude, -Hz, -Location), aes(ymin = NULL, ymax = NULL)) +
+      scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals), 
+               breaks = seq(0, xaxisvals, 1 / (length(unique(amps$Hz)) * samp_freq))) +
       theme_bw() +
       theme(panel.grid.minor.x = element_blank(),
             panel.grid.major.y = element_blank(),
-            legend.key.size = unit(.55, "in")) +
-      scale_color_viridis_d(end = .7, option = "C")) %>%
-      ggsave(filename = file.path("analysis", "thetaStatGraph.pdf"), width = 10)
+            legend.key.size = unit(.55, "in"))) %>%
+      ggsave(filename = file.path("analysis", "thetaStatGraph.pdf"), width = xaxisvals)
   }
 }
 
@@ -221,9 +232,11 @@ data_graphing(catch_cutoff = .85,                                               
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
               samp_freq = 1 / 60,                                               # Equals spacing between CTI intevals (in seconds)
               latestart = 0, earlyend = 0,                                      # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
-              pcpts = c(301:317),
+              pcpts = c(301:315, 317:318,321:322),
               output = "graph_stats",                                           # Use "graph_stats", "graph_all_pcpts", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
               save_output = "Yes",                                              # Use "Yes" and "No" (if 'no', table outputs will still be visible in R)
               clumps = 3,                                                       # Use 1 (no clumping) and 3 (each bin is the average of itself and its two neighbors)
+              xaxisvals = 10,
+              conf_int = "Yes",
               shuff = 5000,
               pval = .001)
