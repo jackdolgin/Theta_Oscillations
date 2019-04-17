@@ -7,7 +7,7 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071",
 
 # Main function begins (encompasses other functions)
 data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
-                          mini_block_ceil, catch, pre_floor, pre_ceil,
+                          mini_block_ceil, side_cut, catch, pre_floor, pre_ceil,
                           post_floor, post_ceil, sep_vis_fields, smooth_method,
                           dep_var, samp_freq, latestart, earlyend, pcpts,
                           output, save_output, clumps, xaxisvals, shuff, pval){
@@ -17,14 +17,23 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   
   dep_var <- as.name(dep_var)                                                   # Converts character to name/symbol so we can refer to it as a column using tidy
   
-  # For each participant, function reads in data, filters it, and transforms it to prepare for interpolation and FFT'ing
+  dem_df <- fread(file.path("data", "Demographics.csv")) %>%
+    mutate_at(vars(SubjID), as.numeric)
+  
+   # For each participant, function reads in data, filters it, and transforms it to prepare for interpolation and FFT'ing
   pcpts_combine <- function(pcpt){
-    pcpt_path <- file.path("data", pcpt, paste0(pcpt, ".csv"))                  # Creates file path for reading in participant data, accomodating all operating systems
-    fread(pcpt_path, select = c(1:23)) %>%                                      # Reads in participant data (the 'select' part is because PsychoPy created an empty column at the end of the data frame for the first few participants, which meant those dataframes had different dimensions than subsequent data frames, which 'do.call' doesn't like)
+      fread(file.path("data", pcpt, paste0(pcpt, ".csv")), select = c(1:23)) %>%# Reads in participant data (the 'select' part is because PsychoPy created an empty column at the end of the data frame for the first few participants, which meant those dataframes had different dimensions than subsequent data frames, which 'do.call' doesn't like)
       filter(Trial > 0) %>%                                                     # Filters out practice trials
       mutate(CatchAcc = mean(ifelse(Opacity > 0, NA, Acc), na.rm = TRUE)) %>%   # Creates column indicating mean accuracy for catch trials
+      group_by(CorrSide) %>%
+      mutate(Side_Acc = mean(Acc, na.rm = TRUE)) %>%
+      ungroup() %>%
+      mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
+      left_join(dem_df, by = c("participant" = "SubjID")) %>%
       filter(CatchAcc >= catch_cutoff,                                          # Filters out participants whose catch accuracy is below desired threshold
-             Opacity > catch) %>%                                               #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
+             Opacity > catch,                                                   #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
+             Side_Diff < side_cut,
+             grepl("fully alert", Q9)) %>%
       mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                       # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
       filter(between(Acc_prefilter, pre_floor, pre_ceil)) %>%                   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
       mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
@@ -34,7 +43,8 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
                          ButtonPressTime - lilsquareStartTime, NA),
              Stim_Sides = as.character(
                ifelse(CorrSide == FlashSide, "Valid", "Invalid")),              #                indicating whether cue was valid or invalid
-             CorrSide = if_else(CorrSide == 1, "Right", "Left"),                #                indicating which side the target appeared on
+             CorrSide = case_when(CorrSide == 1 ~ "Right",                      #                indicating which side the target appeared on
+                                  CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
              Stim_Sides = case_when(sep_vis_fields == "No" ~ Stim_Sides,        # Overwrites 'Stim_Sides' column if 'sep_vis_fidels' parameter == 'Yes' to include which side of screen target was on,
                 TRUE ~ paste(Stim_Sides, CorrSide, sep = "_"))) %>%             # as well as whether it was valid with cue; if 'sep_vis_fields' parameter == 'No', leaves 'StimSides' unchanged
       group_by(block) %>%
@@ -222,6 +232,7 @@ data_graphing(catch_cutoff = .85,                                               
               block_floor = .25,                                                # Converts a trial's accuracy to NA if its block's accuracy below this value
               mini_block_floor = .35,                                           # Converts a trial's accuracy to NA if its mini-block's accuracy below this value
               mini_block_ceil = .9,                                             # Converts a trial's accuracy to NA if its mini-block's accuracy above this value
+              side_cut = 1,
               catch = 0,                                                        # -1/0 to include/exclude catch trials in analyses
               pre_floor = .35,                                                  # Filters participants by their accuracy before their blocks below 'block_floor' have been interpolated over
               pre_ceil = .75,                                                   # Line above is the floor of the filter, this line is the ceiling
@@ -232,11 +243,10 @@ data_graphing(catch_cutoff = .85,                                               
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
               samp_freq = 1 / 60,                                               # Equals spacing between CTI intevals (in seconds)
               latestart = 0, earlyend = 0,                                      # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
-              pcpts = c(301:315, 317:318,321:322),
+              pcpts = 401:422,#304:322,
               output = "graph_stats",                                           # Use "graph_stats", "graph_all_pcpts", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
               save_output = "Yes",                                              # Use "Yes" and "No" (if 'no', table outputs will still be visible in R)
               clumps = 3,                                                       # Use 1 (no clumping) and 3 (each bin is the average of itself and its two neighbors)
               xaxisvals = 10,
-              conf_int = "Yes",
               shuff = 5000,
               pval = .001)
