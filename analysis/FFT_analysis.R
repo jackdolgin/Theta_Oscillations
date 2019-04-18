@@ -7,7 +7,7 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071",
 
 # Main function begins (encompasses other functions)
 data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
-                          mini_block_ceil, side_cut, catch, pre_floor, pre_ceil,
+                          mini_block_ceil, side_bias, catch, pre_floor, pre_ceil,
                           post_floor, post_ceil, sep_vis_fields, smooth_method,
                           dep_var, samp_freq, latestart, earlyend, pcpts,
                           output, save_output, clumps, xaxisvals, shuff, pval){
@@ -32,7 +32,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       left_join(dem_df, by = c("participant" = "SubjID")) %>%
       filter(CatchAcc >= catch_cutoff,                                          # Filters out participants whose catch accuracy is below desired threshold
              Opacity > catch,                                                   #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
-             Side_Diff < side_cut,
+             Side_Diff < side_bias,
              grepl("fully alert", Q9)) %>%
       mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                       # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
       filter(between(Acc_prefilter, pre_floor, pre_ceil)) %>%                   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
@@ -65,16 +65,21 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       group_by(CTI, Stim_Sides, !!!grouping_constants) %>%
       summarise_at(vars(Acc, RT), funs(mean(., na.rm = TRUE))) %>%              # Overwrites 'Acc' and 'RT' columns according to mean of each combination of 'CTI' and 'Stim_Sides'
       arrange(Stim_Sides, CTI) %>%
-      ungroup() %>%
+      group_by(Stim_Sides) %>%
       mutate_at(vars(Acc, RT), funs(na.approx(., na.rm = FALSE, rule = 2))) %>%
       mutate_at(vars(Acc, RT), funs(rollapply(., clumps, mean, partial = TRUE)))
     }
   
   cmbd_pcpts0 <- do.call(rbind, mclapply(pcpts, pcpts_combine)) %>%             # Calls 'pcpts_combine' function for argumenet 'pcpts'; then combines each participant's dataframe into one
-                        arrange(Acc_prefilter)
-  cmbd_pcpts <- pivot_wide(cmbd_pcpts0, CTI:CatchAcc, Stim_Sides, !!dep_var) 
-  hann <- hanning.window(length(unique(cmbd_pcpts$CTI)))                        # Creates Hanning window, gets applied later
-  locations <- colnames(cmbd_pcpts[,-seq_len(1 + length(grouping_constants))])  # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
+                        arrange(Acc_prefilter, participant, CTI)
+  
+  hann <- hanning.window(length(unique(cmbd_pcpts0$CTI)))                       # Creates Hanning window, gets applied later
+  locations <- unique(cmbd_pcpts0$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
+  
+  cmbd_pcpts <- cmbd_pcpts0 %>%
+    pivot_wide(CTI:CatchAcc, Stim_Sides, !!dep_var) %>%
+    group_by(participant) %>%
+    mutate_at(vars(locations), funs(na.approx(., na.rm = FALSE, rule = 2)))
   
   amplitude <- function(x, ...){ x %>%
       group_by_(.dots = lazy_dots(...)) %>%
@@ -94,7 +99,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
     
     # Output Prelim Data Table -------------------------------------------------
 
-        if (save_output == "Yes") {                                             # Conditionally saves data frame as .csv in analysis folder
+    if (save_output == "Yes") {                                             # Conditionally saves data frame as .csv in analysis folder
       write.csv(cmbd_pcpts0, file.path("analysis", "Prelim_table.csv"))
     }
     return(cmbd_pcpts)
@@ -110,8 +115,8 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
     # Output Individuals' Plots ------------------------------------------------
   
     # Produces left half of final graph
-    ts_facets <- rbind((mutate(cmbd_pcpts0, participant = "All")),              # Copies each row in 'cmbd_pcpts' except 'participant' = 'All', which creates the top graph on the left labeled 'All'
-                                 cmbd_pcpts0) %>%
+    ts_facets <- rbind(mutate(cmbd_pcpts0, participant = "All"),              # Copies each row in 'cmbd_pcpts' except 'participant' = 'All', which creates the top graph on the left labeled 'All'
+                    mutate_at(cmbd_pcpts0, vars(participant), as.character)) %>%
       group_by(CTI, Stim_Sides, !!!grouping_constants) %>%
       summarise(!!dep_var := mean(!!dep_var)) %>%                               # Keeps either RT or Acc column—depending on whether 'dep_var' parameter == 'RT' or 'Acc'
       ggplot(aes(CTI, !!dep_var, group = Stim_Sides, color = Stim_Sides)) +     # CTI is x axis, dep_var is y axis
@@ -232,7 +237,7 @@ data_graphing(catch_cutoff = .85,                                               
               block_floor = .25,                                                # Converts a trial's accuracy to NA if its block's accuracy below this value
               mini_block_floor = .35,                                           # Converts a trial's accuracy to NA if its mini-block's accuracy below this value
               mini_block_ceil = .9,                                             # Converts a trial's accuracy to NA if its mini-block's accuracy above this value
-              side_cut = 1,
+              side_bias = .3,
               catch = 0,                                                        # -1/0 to include/exclude catch trials in analyses
               pre_floor = .35,                                                  # Filters participants by their accuracy before their blocks below 'block_floor' have been interpolated over
               pre_ceil = .75,                                                   # Line above is the floor of the filter, this line is the ceiling
@@ -243,7 +248,7 @@ data_graphing(catch_cutoff = .85,                                               
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
               samp_freq = 1 / 60,                                               # Equals spacing between CTI intevals (in seconds)
               latestart = 0, earlyend = 0,                                      # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
-              pcpts = 401:422,#304:322,
+              pcpts = 401:424,#304:322,
               output = "graph_stats",                                           # Use "graph_stats", "graph_all_pcpts", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
               save_output = "Yes",                                              # Use "Yes" and "No" (if 'no', table outputs will still be visible in R)
               clumps = 3,                                                       # Use 1 (no clumping) and 3 (each bin is the average of itself and its two neighbors)
