@@ -9,7 +9,7 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071",
 data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
                           mini_block_ceil, side_bias, catch, pre_floor, pre_ceil,
                           post_floor, post_ceil, sep_vis_fields, smooth_method,
-                          dep_var, samp_freq, latestart, earlyend, pcpts,
+                          dep_var, sbtr, samp_freq, latestart, earlyend, pcpts,
                           output, save_output, clumps, xaxisvals, shuff, pval){
 
   grouping_constants <- quos(participant, Trials_filtered_out, Acc_prefilter,   # Columns that are frequently used for grouping, variable means
@@ -20,7 +20,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   dem_df <- fread(file.path("data", "Demographics.csv")) %>%
     mutate_at(vars(SubjID), as.numeric)
   
-   # For each participant, function reads in data, filters it, and transforms it to prepare for interpolation and FFT'ing
+  # For each participant, function reads in data, filters it, and transforms it to prepare for interpolation and FFT'ing
   pcpts_combine <- function(pcpt){
       fread(file.path("data", pcpt, paste0(pcpt, ".csv")), select = c(1:23)) %>%# Reads in participant data (the 'select' part is because PsychoPy created an empty column at the end of the data frame for the first few participants, which meant those dataframes had different dimensions than subsequent data frames, which 'do.call' doesn't like)
       filter(Trial > 0) %>%                                                     # Filters out practice trials
@@ -31,14 +31,15 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
       left_join(dem_df, by = c("participant" = "SubjID")) %>%
       filter(CatchAcc >= catch_cutoff,                                          # Filters out participants whose catch accuracy is below desired threshold
+             grepl("fully alert", Q9),
              Opacity > catch,                                                   #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
-             Side_Diff < side_bias,
-             grepl("fully alert", Q9)) %>%
-      mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                       # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
-      filter(between(Acc_prefilter, pre_floor, pre_ceil)) %>%                   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
-      mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
+             Side_Diff < side_bias) %>%
+      mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
              CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
-                                   1 / 60), samp_freq),
+                                   1 / 60), samp_freq)) %>% 
+      filter(between(Acc_prefilter, pre_floor, pre_ceil, incbounds = TRUE),                       # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
+             between(CTI, min(CTI) + latestart, max(CTI) - earlyend)) %>%
+      mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
              RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
                          ButtonPressTime - lilsquareStartTime, NA),
              Stim_Sides = as.character(
@@ -46,7 +47,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
              CorrSide = case_when(CorrSide == 1 ~ "Right",                      #                indicating which side the target appeared on
                                   CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
              Stim_Sides = case_when(sep_vis_fields == "No" ~ Stim_Sides,        # Overwrites 'Stim_Sides' column if 'sep_vis_fidels' parameter == 'Yes' to include which side of screen target was on,
-                TRUE ~ paste(Stim_Sides, CorrSide, sep = "_"))) %>%             # as well as whether it was valid with cue; if 'sep_vis_fields' parameter == 'No', leaves 'StimSides' unchanged
+                TRUE ~ paste(CorrSide, Stim_Sides, sep = "_"))) %>%             # as well as whether it was valid with cue; if 'sep_vis_fields' parameter == 'No', leaves 'StimSides' unchanged
       group_by(block) %>%
       mutate(block_acc = mean(Acc)) %>%                                         # Creates column indicating block's mean accuracy
       group_by(Opacity > 0) %>%
@@ -71,15 +72,22 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
     }
   
   cmbd_pcpts0 <- do.call(rbind, mclapply(pcpts, pcpts_combine)) %>%             # Calls 'pcpts_combine' function for argumenet 'pcpts'; then combines each participant's dataframe into one
-                        arrange(Acc_prefilter, participant, CTI)
+                        arrange(Acc_prefilter, participant, Stim_Sides, CTI)
   
   hann <- hanning.window(length(unique(cmbd_pcpts0$CTI)))                       # Creates Hanning window, gets applied later
   locations <- unique(cmbd_pcpts0$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
   
   cmbd_pcpts <- cmbd_pcpts0 %>%
     pivot_wide(CTI:CatchAcc, Stim_Sides, !!dep_var) %>%
+    arrange(Acc_prefilter, participant, CTI) %>%
     group_by(participant) %>%
     mutate_at(vars(locations), funs(na.approx(., na.rm = FALSE, rule = 2)))
+  
+  s <- tail(1:ncol(cmbd_pcpts), length(locations)) [c(TRUE, FALSE)]
+  cmbd_pcpts[paste0(names(cmbd_pcpts[s]), "minus",
+                 names(cmbd_pcpts)[s + 1])] <- cmbd_pcpts[s] - cmbd_pcpts[s + 1]
+  
+  if (sbtr == "Yes") locations = tail(colnames(cmbd_pcpts), length(locations)/2)
   
   amplitude <- function(x, ...){ x %>%
       group_by_(.dots = lazy_dots(...)) %>%
@@ -246,6 +254,7 @@ data_graphing(catch_cutoff = .85,                                               
               sep_vis_fields = "No",                                            # Use 'No' and 'Yes'; 'No' means invalid cue and target trials are analyzed differently at each CTI than trials with valid cue and target; 'Yes' means we further divide analyses by which side of screen target appeared, yielding four conditions (valid/invalid and left/right)
               smooth_method = "loess",                                          # See geom_smooth documentation for available smoothing methods
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
+              sbtr = "No",
               samp_freq = 1 / 60,                                               # Equals spacing between CTI intevals (in seconds)
               latestart = 0, earlyend = 0,                                      # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
               pcpts = 401:424,#304:322,
