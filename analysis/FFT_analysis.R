@@ -1,15 +1,16 @@
 # Install packages if not already installed, then load them
 if (!require(devtools)) install.packages('devtools')
 if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
-smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "e1071",
+smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec",
               "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel",
               "scales", "purrr", "lazyeval", "stats", "gdata", "viridis"))
 
 # Main function begins (encompasses other functions)
 data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
-                          mini_block_ceil, side_bias, catch, pre_floor, pre_ceil,
-                          post_floor, post_ceil, sep_vis_fields, smooth_method,
-                          dep_var, sbtr, samp_freq, latestart, earlyend, pcpts,
+                          mini_block_ceil, side_bias, focus = "", catch,
+                          pre_floor, pre_ceil, post_floor, post_ceil,
+                          sep_vis_fields, smooth_method, win, dep_var, sbtr,
+                          samp_per, pad0 = 500, latestart, earlyend, pcpts,
                           output, save_output, clumps, xaxisvals, shuff, pval){
 
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means
@@ -31,12 +32,12 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
       left_join(dem_df, by = c("participant" = "SubjID")) %>%
       filter(CatchAcc >= catch_cutoff,                                          # Filters out participants whose catch accuracy is below desired threshold
-             grepl("fully alert", Q9),
+             grepl(focus, Q9),
              Opacity > catch,                                                   #             catch trials if 'catch' parameter is assigned to 0; if it's assigned to -1, this line does nothing)
              Side_Diff < side_bias) %>%
       mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for 'block_floor', unlike 'Acc_postfilter'
              CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
-                                   1 / 60), samp_freq)) %>% 
+                                   1 / 60), samp_per)) %>% 
       filter(between(Acc_prefilter, pre_floor, pre_ceil, incbounds = TRUE),                       # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
              between(CTI, min(CTI) + latestart, max(CTI) - earlyend)) %>%
       mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
@@ -73,7 +74,8 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   
   cmbd <- do.call(rbind, mclapply(pcpts, pcpts_combine)) %>%             # Calls 'pcpts_combine' function for argumenet 'pcpts'; then combines each participant's dataframe into one
                         arrange(Acc_prefilter, participant, Stim_Sides, CTI)
-  hann <- hanning.window(length(unique(cmbd$CTI)))                       # Creates Hanning window, gets applied later
+  if (win == "tukey"){ win <- tukeywindow(length(unique(cmbd$CTI)), .5)} else { # Creates window, which if 'tukey' will add the parameter 'r == .5'—so 'only' half the data length will be non-flat
+    win <- match.fun(paste0(win, "window"))(length(unique(cmbd$CTI)))}
   locations <- unique(cmbd$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
   pcpts <- unique(cmbd$participant)                                       # Creates vector of remaining participant numbers after 'pcpts_combine' filtering
   cmbd_w <- cmbd %>%
@@ -86,7 +88,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   if (sbtr == "Yes"){
     s <- tail(1:ncol(cmbd_w), length(locations)) [c(TRUE, FALSE)]
     cmbd_w[paste0(names(cmbd_w[s]), "_minus_",
-                 names(cmbd_w)[s + 1])] <- cmbd_w[s] - cmbd_w[s + 1]
+                  names(cmbd_w)[s + 1])] <- cmbd_w[s] - cmbd_w[s + 1]
     locations = tail(colnames(cmbd_w), length(locations) / 2)
   }
   
@@ -99,47 +101,17 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
   # Transforms from Time to Frequency Domain
   amplitude <- function(x, ...){ x %>%
       group_by_(.dots = lazy_dots(...)) %>%
-      mutate_at(vars(locations), funs(Mod(fft(detrend(.) * hann)))) %>%         # Detrends, multiplies by Hanning window, applies FFT, and then takes magnitude   
-      mutate(Hz = (row_number() - 1) / (n() * samp_freq)) %>%
+      mutate_at(vars(locations), funs(Mod(fft(detrend(.) * win)))) %>%          # Detrends, multiplies by window, applies FFT, and then takes magnitude   
+      mutate(Hz = (row_number() - 1) / (n() * samp_per)) %>%
       ungroup() %>%
       select(-CTI)
   }
   amps <- amplitude(cmbd_w, participant) 
-
   
- # Set Up Graphing
- 
-  graph <- function(y, x) {
-    y(x) +
-      theme_bw() +
-      scale_color_viridis_d(option = "C",
-                            end = .7 + RoundTo(.0001 * RoundTo(length(locations),
-                                                               4, floor), .2, ceiling),
-                            labels = sapply(locations, function(x) gsub("_", " ", x),
-                                            USE.NAMES = FALSE, simplify = TRUE)) +
-      guides(colour = guide_legend(reverse = TRUE), fill = "none")
-  }
   
-  avgd <- function(y, x) {
-    graph(y, x) + geom_line(size = 1.5) +
-      theme(legend.key.size = unit(.55, "in")) +
-      labs(subtitle = paste("Data from", as.character(length(pcpts)),
-                       "participants"))
-  }
+  # Set Up Graphing
   
-  save_avgd <- function(x) { x %>%
-      ggsave(filename = file.path("analysis", paste0(output, ".pdf")),
-             width = xaxisvals)}
-  
-  idvl <- function(y, x){
-    graph(y, x) +
-      theme(plot.title = element_text(hjust = 0.5),
-            plot.subtitle = element_text(hjust = 0.5)) +
-      facet_wrap(~factor(participant, levels = pcpts),
-                 ncol = 4, scales = 'free_x')                                   # 'free' means the y_axis isn't fixed from participant to participant
-  }
-  
-  t_srs <- function(x){ 
+  t_srs_g <- function(x){ 
     cmbd_w %>%
       gather(Location, !!dep_var, -c(CTI, !!!grouping_cnsts)) %>%
       right_join(gather(conf_int(cmbd_w, CTI), Location, Conf_Int, -CTI),
@@ -152,29 +124,59 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       labs(title = paste(dep_var, "by Cue-Target Interval"),
            x = "Cue-Target Interval (ms)")
   }
-  
   fft_g <- function(x) { x +
       labs(title = paste("FFT of Target", dep_var),
            col = "Target Location") +
       theme(panel.grid.minor.x = element_blank(),
             panel.grid.major.y = element_blank()) +
       scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals), 
-         breaks = seq(0, xaxisvals, 1 / (length(unique(amps$Hz)) * samp_freq)))
-    }
+         breaks = seq(0, xaxisvals, 1 / (length(unique(amps$Hz)) * samp_per)))
+  }
   
-
+  viridis_cols <- .7 + RoundTo(.0001 * RoundTo(length(locations),
+                                                 4, floor), .2, ceiling)
+  graph <- function(y, x) {
+    y(x) +
+      theme_bw() +
+      scale_color_viridis_d(option = "C",
+                            end = viridis_cols,
+                            labels = sapply(locations, function(x) gsub("_", " ", x),
+                                            USE.NAMES = FALSE, simplify = TRUE)) +
+      scale_fill_viridis_d(option = "C",
+                           end = viridis_cols) +
+      guides(colour = guide_legend(reverse = TRUE), fill = FALSE)
+  }
+  
+  idvl_g <- function(y, x){
+    graph(y, x) +
+      theme(plot.title = element_text(hjust = 0.5),
+            plot.subtitle = element_text(hjust = 0.5)) +
+      facet_wrap(~factor(participant, levels = pcpts),
+                 ncol = 4, scales = 'free_x')                                   # 'free' means the y_axis isn't fixed from participant to participant
+  }
+  cmbd_g <- function(y, x) {
+    graph(y, x) + geom_line(size = 1.5) +
+      theme(legend.key.size = unit(.55, "in")) +
+      labs(subtitle = paste("Data from", as.character(length(pcpts)),
+                            "participants"))
+  }
+  
+  sv_cmbd_g <- function(x) { x %>%
+      ggsave(filename = file.path("analysis", paste0(output, ".pdf")),
+             width = xaxisvals)}
+  
   # Conditionally returns data frame of prelim participant or post-FFT data, exits function
   if (output == "prelim_table") {
     
     # Output Prelim Data Table -------------------------------------------------
-
+    
     if (save_output == "Yes") {                                             # Conditionally saves data frame as .csv in analysis folder
       write.csv(cmbd, file.path("analysis", "Prelim_table.csv"))
     }
     return(cmbd_w)
   } else if (output == "fft_table") {
     # Output FFT Data Table ----------------------------------------------------
-      
+    
     if (save_output == "Yes") {                                                 # Conditionally saves data frame as .csv in analysis folder
       write.csv(amps, file.path("analysis", "FFT_table.csv"))
     }
@@ -184,7 +186,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
     # Output Individuals' Plots ------------------------------------------------
     
     # Produces left half of final graph
-    ts_facets <- idvl(t_srs, 1) +
+    ts_facets <- idvl_g(t_srs_g, 1) +
       geom_line(alpha = I(2 / 10), color = "grey", show.legend = FALSE) +       # Graphs unsmoothed data in light gray
       stat_smooth(method = smooth_method, span = 0.2, se = FALSE,               # Smoothes data depending on 'smooth_method' parameter
                   size = .5, show.legend = FALSE)
@@ -199,7 +201,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       unite(lab, !!!tail(grouping_cnsts, -1), sep = "\n", remove = FALSE)
     
     # Produces right half of final graph
-    fft_facets <- idvl(fft_g, amps %>%
+    fft_facets <- idvl_g(fft_g, amps %>%
       group_by(participant, Hz) %>%
       summarise_all(mean) %>%
       gather(Flash_and_or_field, Magnitude, -Hz, -c(!!!grouping_cnsts)) %>%
@@ -215,10 +217,10 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
     
   } else if (output == "combined_ts") { # Graph combined Time Series -----------
     
-    (avgd(t_srs, 0) +
-      theme(panel.grid = element_blank()) +
-      geom_ribbon(alpha = 0.15, aes(color = NULL))) %>%
-      save_avgd
+    (cmbd_g(t_srs_g, 0) +
+       theme(panel.grid = element_blank()) +
+       geom_ribbon(alpha = 0.15, aes(color = NULL))) %>%
+      sv_cmbd_g
     
   } else { # Graph combined FFT ------------------------------------------------
     
@@ -227,7 +229,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       cols_ids <- match(perm_cols, colnames(.data))
       ids <- seq_len(nrow(.data))
       n_ids <- rerun(n, sample(ids))
-    
+      
       map_dfr(n_ids, function(x){
         .data[ids, cols_ids] <- .data[x, cols_ids]
         .data
@@ -250,7 +252,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
       gather(Location, Magnitude, -c(Hz, source)) %>%
       right_join(gather(conf_int(amps, Hz), Location, Conf_Int, -Hz),
                  by = c("Hz", "Location"))
-    (avgd(fft_g, ggplot(amps, aes(Hz, Magnitude, col = Location, linetype = source, 
+    (cmbd_g(fft_g, ggplot(amps, aes(Hz, Magnitude, col = Location, linetype = source, 
                  ymin = Magnitude - Conf_Int, ymax = Magnitude + Conf_Int))) +
       scale_linetype_manual(values = c("dashed", "solid")) +
       labs(linetype = "",
@@ -263,7 +265,7 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
                    select(-c(`Significance Cutoff`, Conf_Int)) %>%
                    gather(source, Magnitude, -Hz, -Location), 
                  aes(ymin = NULL, ymax = NULL))) %>%
-      save_avgd
+      sv_cmbd_g
 
   }
 }
@@ -272,25 +274,28 @@ data_graphing <- function(catch_cutoff, block_floor, mini_block_floor,
 
 # Sets inputs for the 'data_graphing' function
 data_graphing(catch_cutoff = .85,                                               # Filters out participants with a catch trial accuracy below this value 
-              block_floor = .25,                                                # Converts a trial's accuracy to NA if its block's accuracy below this value
-              mini_block_floor = .35,                                           # Converts a trial's accuracy to NA if its mini-block's accuracy below this value
-              mini_block_ceil = .9,                                             # Converts a trial's accuracy to NA if its mini-block's accuracy above this value
+              block_floor = .65,                                                # Converts a trial's accuracy to NA if its block's accuracy below this value
+              mini_block_floor = .45,                                           # Converts a trial's accuracy to NA if its mini-block's accuracy below this value
+              mini_block_ceil = .85,                                             # Converts a trial's accuracy to NA if its mini-block's accuracy above this value
               side_bias = .3,
+              focus = "fully alert",                                                       # Use "" or "fully alert"; "" for no attention check, "fully alert" for excluding participants who reported either dozing off and/or not being fully alert on > 1 of the 8 blocks
               catch = 0,                                                        # -1/0 to include/exclude catch trials in analyses
-              pre_floor = .35,                                                  # Filters participants by their accuracy before their blocks below 'block_floor' have been interpolated over
-              pre_ceil = .75,                                                   # Line above is the floor of the filter, this line is the ceiling
+              pre_floor = .45,                                                  # Filters participants by their accuracy before their blocks below 'block_floor' have been interpolated over
+              pre_ceil = .85,                                                   # Line above is the floor of the filter, this line is the ceiling
               post_floor = .35,                                                 # Filters participants by their accuracy after their blocks below 'block_floor' have been interpolated over 
               post_ceil = .75,                                                  # Line above is the floor of the filter, this line is the ceiling
               sep_vis_fields = "No",                                            # Use 'No' and 'Yes'; 'No' means invalid cue and target trials are analyzed differently at each CTI than trials with valid cue and target; 'Yes' means we further divide analyses by which side of screen target appeared, yielding four conditions (valid/invalid and left/right)
               smooth_method = "loess",                                          # See geom_smooth documentation for available smoothing methods
+              win = "tukey",                                                     # Use "tukey", "square", "hann", "welch", "triangle", "hamming", "cosine", or "kaiser" windowing methods
               dep_var = "Acc",                                                  # Use 'Acc' or 'RT'
               sbtr = "No",
-              samp_freq = 1 / 60,                                               # Equals spacing between CTI intevals (in seconds)
+              samp_per = 1 / 60,                                                # Equals spacing between CTI intevals (in seconds)
+              pad0 = 52,
               latestart = 0, earlyend = 0,                                      # Filters out, for FFT analysis, trials with a CTI < 'latestart' or a CTI > ((largest CTI [so 1.3]) - 'earlyend'); units = seconds
-              pcpts = 401:424,#304:322,
-              output = "combined_fft",                                           # Use "combined_fft", "combined_ts", "individuals", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
+              pcpts = 301:324,#401:427,
+              output = "combined_fft",                                          # Use "combined_fft", "combined_ts", "individuals", "prelim_table" (before interpolation and FFT'ing), and "fft_table"
               save_output = "Yes",                                              # Use "Yes" and "No" (if 'no', table outputs will still be visible in R)
-              clumps = 3,                                                       # Use 1 (no clumping) and 3 (each bin is the average of itself and its two neighbors)
+              clumps = 1,                                                       # Use 1 (no clumping) and 3 (each bin is the average of itself and its two neighbors)
               xaxisvals = 10,
-              shuff = 5000,
-              pval = .001)
+              shuff = 50,
+              pval = .05)
