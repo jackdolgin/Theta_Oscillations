@@ -1,0 +1,54 @@
+Progress,Duration (in seconds),Finished,UserLanguage,SubjID,Q9
+100,26,TRUE,EN,301,
+100,27,TRUE,EN,302,
+100,29,TRUE,EN,303,
+100,35,TRUE,EN,304,I was fully alert the entire task
+100,67,TRUE,EN,305,I was fully alert the entire task
+100,57,TRUE,EN,306,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,68,TRUE,EN,307,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,68,TRUE,EN,308,I was fully alert the entire task
+100,67,TRUE,EN,309,I was fully alert the entire task
+100,52,TRUE,EN,310,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,102,TRUE,EN,311,I was fully alert the entire task
+100,53,TRUE,EN,312,I was fully alert the entire task
+100,42,TRUE,EN,313,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,79,TRUE,EN,314,I was fully alert the entire task
+100,38,TRUE,EN,315,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,60,TRUE,EN,316,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,55,TRUE,EN,317,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,52,TRUE,EN,318,I was fully alert the entire task
+100,64,TRUE,EN,319,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,73,TRUE,EN,320,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,14,TRUE,EN,321,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,10,TRUE,EN,322,I was fully alert the entire task
+100,52,TRUE,EN,323,I was fully alert the entire task
+100,76,TRUE,EN,324,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,54,TRUE,EN,401,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,80,TRUE,EN,402,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,76,TRUE,EN,403,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,53,TRUE,EN,404,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,62,TRUE,EN,405,I might have dozed off slightly at one point
+100,57,TRUE,EN,406,I was fully alert the entire task
+100,73,TRUE,EN,407,I was fully alert the entire task
+100,57,TRUE,EN,408,I was fully alert the entire task
+100,52,TRUE,EN,409,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,82,TRUE,EN,410,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,50,TRUE,EN,411,I was fully alert the entire task
+100,46,TRUE,EN,412,I was fully alert the entire task
+100,48,TRUE,EN,413,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,48,TRUE,EN,414,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,75,TRUE,EN,415,I was fully alert the entire task
+100,53,TRUE,EN,416,I was fully alert the entire task
+100,49,TRUE,EN,417,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,56,TRUE,EN,418,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,127,TRUE,EN,419,I might have dozed off slightly at one point
+100,49,TRUE,EN,420,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,64,TRUE,EN,421,I might have dozed off slightly at one point
+100,66,TRUE,EN,422,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,83,TRUE,EN,423,My concentration was not full on at least two of the eight blocks (a quarter of all trials)
+100,57,TRUE,EN,424,I might have dozed off slightly at one point
+100,25,TRUE,EN,425,I was fully alert the entire task
+100,49,TRUE,EN,426,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,33,TRUE,EN,427,I might have dozed off slightly at one point
+"{""ImportId"":""progress""}","{""ImportId"":""duration""}","{""ImportId"":""finished""}","{""ImportId"":""userLanguage""}","{""ImportId"":""QID9_TEXT""}","{""ImportId"":""QID12""}"
+Progress,Duration (in seconds),Finished,User Language,Subject ID?,As a last question—we know Duke students have a lot of work and can be tired during the day. We al

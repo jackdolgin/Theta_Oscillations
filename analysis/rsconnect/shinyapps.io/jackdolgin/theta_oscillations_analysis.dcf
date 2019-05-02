@@ -1,0 +1,12 @@
+name: theta_oscillations_analysis
+title: theta_oscillations_analysis
+username:
+account: jackdolgin
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 904231
+bundleId: 2054261
+url: https://jackdolgin.shinyapps.io/theta_oscillations_analysis/
+when: 1556765416.96288
+asMultiple: FALSE
+asStatic: FALSE
