@@ -6,19 +6,18 @@ library(utils); library(tidyr); library(dplyr); library(ggplot2); library(DescTo
 
 ui <- fluidPage(
   title = "Theta Oscillations Analysis",
-  plotOutput('mygraph',  height = 1000, width = 2000),
+  plotOutput('mygraph',  height = 800, width = 1350),
   hr(),
       fluidRow(
         column(4,
                selectizeInput('ext_objects', 'Task by external objects', choices = c("2", "3")),  helpText("`2` corresponds to the two-object task, `3` to the three-object task"), br(),
                selectizeInput('dep_var', 'Dependent Variable', choices = c("Acc", "RT")), br(),
-               selectizeInput('catch', 'Catch Trials', choices = c("Exclude", "Include")), helpText("Either `Exclude` or `Include` catch trials from the analyses (besides the participant meeting the catch trial cutoff); for example `include` would mean analyzing hit rates or response times across all trials, mixing catch and non-catch trials together (response times will be messier since a correct catch trial response is not responding for a full second, therefore an inverse relationship between response time and accuracy)"), br(),
                selectizeInput('iso_sides', 'Group by Side', choices = c('No', 'Yes')), helpText("Group by not only valid and invalid but also by the side of the screen for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`, `Left Invalid`)"), br(),
                selectizeInput('sbtr', 'Subtract Invalid from Valid', choices = c('No', 'Yes')), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
                numericInput('pval', 'P-value', max = .99, value = .05), helpText('The p-value to use for drawing the significance cutoff on the graphs'), br(),
                numericInput('shuff', 'Surrogate Shuffles for Null Hypothesis', min = 1, max = 10000, value = 50, step = 1), helpText("NOTE: increasing this number slows down the run time"), br()),
         column(4,
-               selectizeInput('display', 'Graph', choices = c("combined_fft", "combined_ts", "individuals")), br(),
+               selectizeInput('display', 'Graph', choices = c("FFT Across Participants", "Time-Series Across Participants", "FFT + Time-Series By Individual")), br(),
                numericInput('latestart', 'Late Start', min = 0, max = .8, value = 0), helpText("Filters out trials within the first `latestart` seconds of CTI bins"), br(),
                numericInput('earlyend', 'Early End', min = 0, max = .8, value = 0), helpText('Filters out trials within the last `earlyend` seconds of CTI bins'), br(),
                numericInput('clumps', 'Points to average at each CTI', min = 1, max = 15, value = 1, step = 2), helpText("`1` means this function does nothing, `3` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc..."), br(),
@@ -64,7 +63,7 @@ server <- function(input, output, session) {
         left_join(dem_df, by = c("participant" = "SubjID")) %>%
         filter(CatchAcc >= input$catch_floor,                                   # Filters out participants whose catch accuracy is below desired threshold
                grepl(ifelse(input$attn_filter == "On", "fully alert" , ""), Q9),
-               Opacity > ifelse(input$catch == 'Include', -1, 0),                       #             catch trials if 'catch' parameter is assigned to `exclude`; if it's assigned to `include`, this line does nothing)
+               Opacity > 0,
                Side_Diff <= input$side_bias) %>%
         mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_floor`, unlike `Acc_postfilter`
                CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
@@ -106,8 +105,9 @@ server <- function(input, output, session) {
     cmbd <- do.call(rbind, lapply(pcpts, pcpts_combine)) %>%             # Calls `pcpts_combine` function for argumenet `pcpts`; then combines each participant's dataframe into one
       arrange(Acc_prefilter, participant, Stim_Sides, CTI)
 
-    if (input$win_func == "tukey"){ win <- tukeywindow(length(unique(cmbd$CTI)), .5)} else { # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will be non-flat
-      win <- match.fun(paste0(input$win_func, "window"))(length(unique(cmbd$CTI)))}
+    CTIs <- unique(cmbd$CTI)
+    if (input$win_func == "tukey"){ win <- tukeywindow(length(CTIs), .5)} else { # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will be non-flat
+      win <- match.fun(paste0(input$win_func, "window"))(length(CTIs))}
     locations <- unique(cmbd$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
     pcpts <- unique(cmbd$participant)                                       # Creates vector of remaining participant numbers after `pcpts_combine` filtering
     cmbd_w <- cmbd %>%
@@ -126,7 +126,7 @@ server <- function(input, output, session) {
     
     # Determines confidence intervals
     conf_int <- function(x, ...){ x %>%
-        group_by_(.dots = lazy_dots(...)) %>%
+        group_by(.dots = lazy_dots(...)) %>%
         summarise_at(vars(locations), list(~qnorm(.975) * std_err(.)))
     }
     
@@ -205,7 +205,7 @@ server <- function(input, output, session) {
                                "participants"))
     }
     
-    if (input$display == "individuals"){
+    if (input$display == "FFT + Time-Series By Individual"){
       # Produces left half of final graph
       ts_facets <- idvl_g(t_srs_g, 1) +
         geom_line(alpha = I(2 / 10), color = "grey", show.legend = FALSE) +       # Graphs unsmoothed data in light gray
@@ -234,32 +234,29 @@ server <- function(input, output, session) {
         geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 2.5,# Sets location for label overlayed onto graph
                   aes(label = lab, x = Inf, y = Inf), vjust = 1.15, hjust = 1.05)
       output$mygraph <- renderPlot({ grid.arrange(ts_facets, fft_facets, ncol = 2)
-      }, height = 1000, width = 2000)                # Combines time series and FFT graphs into one plot
-    }  else if (input$display == "combined_ts") {
+      }, height = 800, width = 1350)                # Combines time series and FFT graphs into one plot
+    }  else if (input$display == "Time-Series Across Participants") {
       output$mygraph <- renderPlot({
         move_layers(cmbd_g(t_srs_g, 0) +
                       theme(panel.grid = element_blank()) +
                       geom_ribbon(alpha = 0.15, aes(color = NULL)), "GeomRibbon", position = "bottom")
-      }, height = 1000, width = 2000)
+      }, height = 800, width = 1350)
     } else { # Graph combined FFT ------------------------------------------------
-      
-      # Produces 'shuff' # of null hypothesis permutations
-      shuffle <- function(.data, n, perm_cols){
-        cols_ids <- match(perm_cols, colnames(.data))
-        ids <- seq_len(nrow(.data))
-        n_ids <- rerun(n, sample(ids))
-        
-        map_dfr(n_ids, function(x){
-          .data[ids, cols_ids] <- .data[x, cols_ids]
-          .data
-        })
-      }
       
       set.seed(123)
       fft_x <- 1 / (length(unique(amps$Hz)) * samp_per)
+      
+      # Produces 'shuff' # of null hypothesis permutations
+      shuffle <- function(x){
+        cmbd_w %>%
+          group_by(participant) %>%
+          sample_n(length(CTIs), weight = CTI) %>%
+          mutate_at(vars(CTI), funs(seq(min(CTIs), max(CTIs), samp_per))) %>%
+          mutate(samp_shuff = x)
+      }
+      
       # Produces and save graph
-      amps_shuff <- shuffle(.data = cmbd_w, n = shuff,
-                            perm_cols = c("participant", locations)) %>%
+      amps_shuff <- do.call(rbind, lapply(1:shuff, shuffle)) %>%
         amplitude(shuff) %>%
         group_by(Hz, samp_shuff) %>%
         summarise_at(vars(locations), mean) %>%
@@ -285,7 +282,7 @@ server <- function(input, output, session) {
                                   select(-c(`Significance Cutoff`, Conf_Int)) %>%
                                   gather(source, Magnitude, -Hz, -Location), 
                                 aes(ymin = NULL, ymax = NULL)), "GeomRibbon", position = "bottom"))
-      }, height = 1000, width = 2000)
+      }, height = 800, width = 1350)
       
     }
     

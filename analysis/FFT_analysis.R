@@ -76,8 +76,9 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
   
   cmbd <- do.call(rbind, lapply(pcpts, pcpts_combine)) %>%             # Calls `pcpts_combine` function for argumenet `pcpts`; then combines each participant's dataframe into one
     arrange(Acc_prefilter, participant, Stim_Sides, CTI)
-  if (win_func == "tukey"){ win <- tukeywindow(length(unique(cmbd$CTI)), .5)} else { # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will be non-flat
-    win <- match.fun(paste0(win_func, "window"))(length(unique(cmbd$CTI)))}
+  CTIs <- unique(cmbd$CTI)
+  if (win_func == "tukey"){ win <- tukeywindow(length(CTIs), .5)} else { # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will be non-flat
+    win <- match.fun(paste0(win_func, "window"))(length(CTIs))}
   locations <- unique(cmbd$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
   pcpts <- unique(cmbd$participant)                                       # Creates vector of remaining participant numbers after `pcpts_combine` filtering
   cmbd_w <- cmbd %>%
@@ -184,7 +185,7 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
       write.csv(cmbd, file.path("plots", "Prelim_table.csv"))
   } else if (display == "fft_table") {
        write.csv(amps, file.path("plots", "FFT_table.csv"))
-  } else if (display == "individuals"){
+  } else if (display == "FFT + Time-Series By Individual"){
     
     # display Individuals' Plots ------------------------------------------------
     
@@ -213,13 +214,13 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
       scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals)) +
       labs(caption = paste("Data from", as.character(length(pcpts)),
                            "participants")) +
-      geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 2,# Sets location for label overlayed onto graph
+      geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 1.2,# Sets location for label overlayed onto graph
                 aes(label = lab, x = Inf, y = Inf), vjust = 1.15, hjust = 1.05)
     
     side_by_side <- arrangeGrob(ts_facets, fft_facets, ncol = 2)                # Combines time series and FFT graphs into one plot
     ggsave(file.path("plots", "Indvls_Plots.pdf"), width = 25, side_by_side)
     
-  } else if (display == "combined_ts") { # Graph combined Time Series -----------
+  } else if (display == "Time-Series Across Participants") { # Graph combined Time Series -----------
     
     (move_layers(cmbd_g(t_srs_g, 0) +
                    theme(panel.grid = element_blank()) +
@@ -227,24 +228,20 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
       sv_cmbd_g
     
   } else { # Graph combined FFT ------------------------------------------------
-    
-    # Produces 'shuff' # of null hypothesis permutations
-    shuffle <- function(.data, n, perm_cols){
-      cols_ids <- match(perm_cols, colnames(.data))
-      ids <- seq_len(nrow(.data))
-      n_ids <- rerun(n, sample(ids))
-      
-      map_dfr(n_ids, function(x){
-        .data[ids, cols_ids] <- .data[x, cols_ids]
-        .data
-      })
-    }
-    
+
     set.seed(123)
     fft_x <- 1 / (length(unique(amps$Hz)) * samp_per)
-    # Produces and save graph
-    amps_shuff <- shuffle(.data = cmbd_w, n = shuff,
-                          perm_cols = c("participant", locations)) %>%
+    
+    # Produces 'shuff' # of null hypothesis permutations
+    shuffle <- function(x){
+      cmbd_w %>%
+        group_by(participant) %>%
+        sample_n(length(CTIs), weight = CTI) %>%
+        mutate_at(vars(CTI), funs(seq(min(CTIs), max(CTIs), samp_per))) %>%
+        mutate(samp_shuff = x)
+    }
+    
+    amps_shuff <- do.call(rbind, lapply(1:shuff, shuffle)) %>%
       amplitude(shuff) %>%
       group_by(Hz, samp_shuff) %>%
       summarise_at(vars(locations), mean) %>%
@@ -294,7 +291,7 @@ main_function(ext_objects = 2,                                                  
               shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number slows down the run time
               latestart = 0, earlyend = 0,                                      # Filters out trials within the first `latestart` seconds of CTI bins or the last `earlyend` seconds of CTI bins
               xaxisvals = 10,                                                   # Greatest x-axis value included in graph
-              display = "individuals",                                          # Either `combined_fft`, `combined_ts`, `individuals`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
+              display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `FFT + Time-Series By Individual`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
               dep_var = "Acc",                                                  # Either `Acc` (accuracy) or `RT` (response time)
               pval = .05,                                                       # The p-value to use for drawing the significance cutoff on the graphs
               win_func = "tukey",                                               # Choose between the following types of windowing functions: `tukey`, `square`, `hann`, `welch`, `triangle`, `hamming`, `cosine`, or `kaiser`
