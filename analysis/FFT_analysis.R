@@ -3,15 +3,15 @@ if (!require(devtools)) install.packages('devtools')
 if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
 smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec",
               "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel",
-              "scales", "purrr", "lazyeval", "stats", "gdata", "viridis",
-              "gginnards"))
+              "scales", "lazyeval", "stats", "gdata", "viridis", "gginnards"))
 
 # Main function begins (encompasses other functions)
-main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, attn_filter, catch,
-                          pre_range, post_range,
+main_function <- function(catch_floor, block_floor, miniblock_range, side_bias,
+                          attn_filter, catch, pre_range, post_range,
                           iso_sides, smooth_method, win_func, dep_var, sbtr,
                           samp_per, zeropads, latestart, earlyend, ext_objects,
-                          display, clumps, xaxisvals, shuff, pval){
+                          display, clumps, detrend, demean, xaxisvals,
+                          shuff, pval){
   
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means
                          Acc_postfilter, CatchAcc)                              # don't have to type them out every time we use them for grouping
@@ -106,18 +106,20 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
     pre_pad <- length(pcpts) * (length(unique(cmbd_w$CTI))) * z
     x %>%
       group_by(participant) %>%
-      mutate_at(vars(locations), list(~detrend(.) * win)) %>%
+      mutate_at(vars(locations), list(~ case_when(detrend == "Yes" ~ . - polyval(polyfit(CTI, ., 2), CTI), TRUE ~ .))) %>%
+      mutate_at(vars(locations), list(~ case_when(demean == "Yes" ~ . - mean(.), TRUE ~ .))) %>%
+      mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%
       ungroup() %>%
       add_row(participant = rep(pcpts, times = z * (zeropads + 1))) %>%
       head(-length(pcpts) * z) %>%
       mutate_at(vars(locations), list(~coalesce(., 0))) %>%
       mutate(samp_shuff = ifelse(row_number() <= pre_pad, 
-                                RoundTo(row_number(), pre_pad / z,
-                                        ceiling) / (pre_pad / z), 
-                                RoundTo(row_number() - pre_pad, (n() - pre_pad) / (z),
-                                        ceiling) / ((n() - pre_pad) /  z))) %>%
+                                 RoundTo(row_number(), pre_pad / z,
+                                         ceiling) / (pre_pad / z), 
+                                 RoundTo(row_number() - pre_pad, (n() - pre_pad) / (z),
+                                         ceiling) / ((n() - pre_pad) /  z))) %>%
       group_by(participant, samp_shuff) %>%
-      mutate_at(vars(locations), list(~Mod(fft(.)))) %>%          # Detrends, multiplies by window, applies FFT, and then takes magnitude
+      mutate_at(vars(locations), list(~Mod(sqrt(2/n()) * fft(.))^2)) %>%
       mutate(Hz = (row_number() - 1) / (n() * samp_per)) %>%
       ungroup() %>%
       select(-CTI)
@@ -143,7 +145,7 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
   }
   fft_g <- function(x) { x +
       labs(title = paste0("FFT of Target ", dep_var, ", ", ext_objects, "-object task"),
-           col = "Target Location") +
+           col = "Target Location", y = "Spectral Power") +
       theme(panel.grid.minor.x = element_blank(),
             panel.grid.major.y = element_blank())
   }
@@ -208,8 +210,8 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
     fft_facets <- idvl_g(fft_g, amps %>%
                            group_by(participant, Hz) %>%
                            summarise_all(mean) %>%
-                           gather(Flash_and_or_field, Magnitude, -Hz, -samp_shuff, -c(!!!grouping_cnsts)) %>%
-                           ggplot(aes(Hz, Magnitude, color = Flash_and_or_field))) +
+                           gather(Flash_and_or_field, Power, -Hz, -samp_shuff, -c(!!!grouping_cnsts)) %>%
+                           ggplot(aes(Hz, Power, color = Flash_and_or_field))) +
       geom_line() +
       scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals)) +
       labs(caption = paste("Data from", as.character(length(pcpts)),
@@ -237,7 +239,7 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
       cmbd_w %>%
         group_by(participant) %>%
         sample_n(length(CTIs), weight = CTI) %>%
-        mutate_at(vars(CTI), funs(seq(min(CTIs), max(CTIs), samp_per))) %>%
+        mutate_at(vars(CTI), list(~seq(min(CTIs), max(CTIs), samp_per))) %>%
         mutate(samp_shuff = x)
     }
     
@@ -249,11 +251,11 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
       summarise_at(vars(locations), list(~quantile(., probs = 1 - pval))) %>%
       combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),
               names = (c("Significance Cutoff", "Observed Data"))) %>%
-      gather(Location, Magnitude, -c(Hz, source)) %>%
+      gather(Location, Power, -c(Hz, source)) %>%
       right_join(gather(conf_int(amps, Hz), Location, Conf_Int, -Hz),
                  by = c("Hz", "Location"))
-    (move_layers(cmbd_g(fft_g, ggplot(amps_shuff, aes(Hz, Magnitude, col = Location, linetype = source, 
-                                                      ymin = Magnitude - Conf_Int, ymax = Magnitude + Conf_Int, fill = Location))) +
+    (move_layers(cmbd_g(fft_g, ggplot(amps_shuff, aes(Hz, Power, col = Location, linetype = source, 
+                                                      ymin = Power - Conf_Int, ymax = Power + Conf_Int, fill = Location))) +
                    scale_linetype_manual(values = c("solid", "dashed")) +
                    scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals),
                                       breaks = seq(0, xaxisvals, ifelse(fft_x > .5, round(fft_x, 2), 1))) +
@@ -261,10 +263,10 @@ main_function <- function(catch_floor, block_floor, miniblock_range, side_bias, 
                         caption = paste0(zeropads, " zero pads added","\nSignificance threshold at p < ",
                                          as.character(pval))) +
                    geom_ribbon(data = filter(amps_shuff, source == "Observed Data"), alpha = 0.15, aes(color = NULL)) +
-                   geom_point(size = 3, data = amps_shuff %>% spread(source, Magnitude) %>%
+                   geom_point(size = 3, data = amps_shuff %>% spread(source, Power) %>%
                                 filter(`Observed Data` > `Significance Cutoff`) %>%
                                 select(-c(`Significance Cutoff`, Conf_Int)) %>%
-                                gather(source, Magnitude, -Hz, -Location), 
+                                gather(source, Power, -Hz, -Location), 
                               aes(ymin = NULL, ymax = NULL)), "GeomRibbon", position = "bottom")) %>%
       sv_cmbd_g
     
@@ -286,11 +288,13 @@ main_function(ext_objects = 2,                                                  
               iso_sides = "No",                                                 # Either `No` or `Yes`, which groups by not only valid and invalid but also by the side of the screen for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`, `Left Invalid`)
               sbtr = "No",                                                      # Either `No` or `Yes`, which subtracts the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently
               clumps = 1,                                                       # Number of points to average at each CTI; `1` means this function does nothing, `3` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...
+              detrend = "Yes",                                                  # Either `No` or `Yes` (using a second-degree polynomial)
+              demean = "No",                                                    # Either `No` or `Yes`
               samp_per = 1 / 60,                                                # Spacing between CTI intevals (in seconds); the data was originally sampled at 1 / 60, but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the 'clump' variable groups neighbors but doesn't combine them, keeping the same total number of bins)
-              zeropads = 0,                                                     # The number of zero pads to use; can be set from 0 upwards
+              zeropads = 12,                                                     # The number of zero pads to use; can be set from 0 upwards
               shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number slows down the run time
               latestart = 0, earlyend = 0,                                      # Filters out trials within the first `latestart` seconds of CTI bins or the last `earlyend` seconds of CTI bins
-              xaxisvals = 10,                                                   # Greatest x-axis value included in graph
+              xaxisvals = 25,                                                   # Greatest x-axis value included in graph
               display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `FFT + Time-Series By Individual`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
               dep_var = "Acc",                                                  # Either `Acc` (accuracy) or `RT` (response time)
               pval = .05,                                                       # The p-value to use for drawing the significance cutoff on the graphs
