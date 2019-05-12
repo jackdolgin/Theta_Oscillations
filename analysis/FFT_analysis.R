@@ -6,7 +6,7 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec",
               "scales", "lazyeval", "stats", "gdata", "viridis", "gginnards"))
 
 # Main function begins (encompasses other functions)
-main_function <- function(ext_objects, display, iso_sides, sbtr, samp_per,
+main_function <- function(display, ext_objects, iso_sides, sbtr, samp_per,
                           clumps, dep_var, pval, shuff, trends, smooth_method,
                           win_func, xaxisvals, duration, attn_filter,
                           catch_floor, side_bias, pre_range, post_range,
@@ -215,7 +215,7 @@ main_function <- function(ext_objects, display, iso_sides, sbtr, samp_per,
                            ggplot(aes(Hz, Power, color = Flash_and_or_field))) +
       geom_line() +
       scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals),
-                         breaks = seq(0, xaxisvals, ifelse(xaxisvals > 10 | xaxisvals != xaxis_r, max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r)^-1, fft_x))) +
+                         breaks = seq(0, xaxisvals, ifelse(xaxisvals > 10 | xaxisvals != xaxis_r, 1/max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r), fft_x))) +
       labs(caption = paste("Data from", as.character(length(pcpts)),
                            "participants")) +
       geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 1.2,# Sets location for label overlayed onto graph
@@ -278,8 +278,8 @@ main_function <- function(ext_objects, display, iso_sides, sbtr, samp_per,
 
 
 # Sets inputs for the 'main_function' function
-main_function(ext_objects = 2,                                                  # `2` corresponds to the two-object task, `3` to the three-object task
-              display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `Time-Series + FFT by Individual`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
+main_function(display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `Time-Series + FFT by Individual`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
+              ext_objects = 2,                                                  # `2` corresponds to the two-object task, `3` to the three-object task
               iso_sides = FALSE,                                                 # Either `FALSE` or `TRUE`, which groups by not only valid and invalid but also by the side of the screen for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`, `Left Invalid`)
               sbtr = FALSE,                                                     # Either `FALSE` or `TRUE`, which subtracts the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently
               samp_per = 1 / 60,                                                # Spacing between CTI intevals (in seconds); the data was originally sampled at 1 / 60, but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the 'clump' variable groups neighbors but doesn't combine them, keeping the same total number of bins)

@@ -9,10 +9,11 @@ ui <- fluidPage(
   plotOutput('mygraph',  height = 800, width = 1350),
   hr(),       
   fluidRow(class = "text-center", 
-           column(4, h3( 'Task and Graph Choice'), offset = 3)), br(), br(),
+           column(4, h3( 'Graph Choice and Task'), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
-           column(4, offset = 1, radioGroupButtons('ext_objects', choices = c("2-object Task", "3-object Task"), status = "primary")),
-           column(5, offset = .5, radioGroupButtons('display', choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary"))),
+           column(6, offset = .3, radioGroupButtons('display', choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary")),
+           column(3, offset = .4, radioGroupButtons('ext_objects', choices = c("2-object Task", "3-object Task"), status = "primary"))
+           ),
   br(), br(), br(), br(), 
   fluidRow(class = "text-center", 
            column(4, h3( 'Quantification and Statistical Analyses'), offset = 3)), br(), br(),
@@ -22,12 +23,12 @@ ui <- fluidPage(
                   numericInput('samp_per', 'Sampling Period', min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(1 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
                   numericInput('clumps', 'Neighbors to average at each CTI', min = 0, max = 14, value = 0, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
                   ),
-            column(4,
+            column(3,
                   radioGroupButtons('dep_var', 'Dependent Variable', c('Accuracy', 'Response Time'), selected = 'Accuracy', status = 'primary'), br(),
                   numericInput('pval', 'P-value', max = .99, value = .05), helpText('The p-value to use for drawing the significance cutoff on the graphs'), br(),
                   numericInput('shuff', 'Surrogate Shuffles for Null Hypothesis', min = 1, max = 10000, value = 50, step = 1), helpText("NOTE: increasing this number slows down the run time")
             ),
-           column(4, br(),
+           column(5, br(),
                   checkboxGroupButtons('trends', choices = c("Detrending", "Demeaning"), selected = c("Detrending", "Demeaning"), status = 'primary'), br(),
                   radioGroupButtons('smooth_method', 'Smoothing Individuals\' Time-Series', c("GLM", "GAM", "Loess", "LM"), selected = "Loess", status = "primary"), br(),
                   radioGroupButtons('win_func', 'Windowing Function', c("Cosine", "Hamming", "Hann", "Kaiser", "Square", "Triangle", "Tukey", "Welch"), selected = "Tukey", status = "primary"), br(),
@@ -250,7 +251,7 @@ server <- function(input, output, session) {
                              ggplot(aes(Hz, Power, color = Flash_and_or_field))) +
         geom_line() +
         scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxis_r),
-                           breaks = seq(0, input$xaxisvals, ifelse(input$xaxisvals > 10 | input$xaxisvals != xaxis_r, max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r)^-1, fft_x))) +
+                           breaks = seq(0, input$xaxisvals, ifelse(input$xaxisvals > 10 | input$xaxisvals != xaxis_r, 1/max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r), fft_x))) +
         labs(caption = paste("Data from", as.character(length(pcpts)),
                              "participants")) +
         geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 2.5,# Sets location for label overlayed onto graph

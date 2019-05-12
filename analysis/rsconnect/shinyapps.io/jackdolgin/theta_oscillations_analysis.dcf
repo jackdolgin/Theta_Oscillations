@@ -5,8 +5,8 @@ account: jackdolgin
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 904231
-bundleId: 2055660
+bundleId: 2078088
 url: https://jackdolgin.shinyapps.io/theta_oscillations_analysis/
-when: 1556816550.84941
+when: 1557646806.39276
 asMultiple: FALSE
 asStatic: FALSE
