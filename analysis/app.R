@@ -21,7 +21,7 @@ ui <- fluidPage(
                   switchInput('iso_sides', "Separate Hemifields", labelWidth = 150), br(),
                   switchInput('sbtr', "Analyze Invalid - Valid", labelWidth = 150), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
                   numericInput('samp_per', 'Sampling Period', min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(1 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
-                  numericInput('clumps', 'Neighbors to average at each CTI', min = 0, max = 14, value = 0, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
+                  numericInput('clumps', 'Neighbors to average at each CTI', min = 0, max = 14, value = 2, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
                   ),
             column(3,
                   radioGroupButtons('dep_var', 'Dependent Variable', c('Accuracy', 'Response Time'), selected = 'Accuracy', status = 'primary'), br(),
@@ -51,9 +51,9 @@ ui <- fluidPage(
   fluidRow(class = "text-center", br(),
            column(4, h3( 'Filtering Trials'), offset = 3)), br(), br(),
   fluidRow(column(4, br(),
-                   numericInput('block_floor', 'Block Accuracy Floor', min = 0, max = 1, value = .65), helpText("Interpolate over trials if the average hit rate in that block, every 48 trials, was below this value")),
+                   numericInput('block_floor', 'Block Accuracy Floor', min = 0, max = 1, value = .40), helpText("Interpolate over trials if the average hit rate in that block, every 48 trials, was below this value")),
             column(4,
-                   sliderInput('miniblock_range', 'Mini-Block Accuracy Cutoffs', min = 0, max = 1, value = c(.45, .85)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
+                   sliderInput('miniblock_range', 'Mini-Block Accuracy Cutoffs', min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
            column(4, br(),
                   sliderInput('CTI_range', 'Remove CTI\'s Outside This Range', min = .5, max = 1.29, value = c(.5, 1.29)))), br(), br())
 

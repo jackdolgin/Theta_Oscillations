@@ -174,7 +174,7 @@ main_function <- function(display, ext_objects, iso_sides, sbtr, samp_per,
   cmbd_g <- function(y, x) {
     graph(y, x) + geom_line(size = 1.5) +
       theme(legend.key.size = unit(.55, "in")) +
-      labs(subtitle = paste( "Data from", as.character(length(pcpts)),
+      labs(subtitle = paste("Data from", as.character(length(pcpts)),
                             "participants"))
   }
   
