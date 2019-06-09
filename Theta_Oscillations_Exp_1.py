@@ -6,6 +6,7 @@ import random
 import os  # handy system and path functions
 import sys  # to get file system encoding
 import math
+from itertools import chain
 
 # Ensure that relative paths start from the same directory as this script
 _thisDir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
@@ -82,6 +83,13 @@ lilcolor = [-.35, -.35, -.35]
 opacity = .14
 
 
+##---------------------------SOUND NOISE & LOUDNESS---------------------------##
+
+sound_clip = sound.Sound('A')
+soundfiles = [os.path.join('stimuli','ding.wav'),
+              os.path.join('stimuli','chord.wav')]
+
+
 ##-----------------------TARGET INTERVALS & DURATION SIZES--------------------##
 
 framelength = win.monitorFramePeriod
@@ -92,9 +100,9 @@ lilduration = int(round(.0333/framelength))
 flash_duration = int(round(.0333/framelength))
 square_start_min = int(round(1/framelength))
 square_start_max = int(round(1.2/framelength))
-flash_start_min = int(round(.4167/framelength))
-flash_start_max = int(round(.8333/framelength))
-lilafterflash_constant = int(round(.5/framelength))
+flash_start_min = int(round(.4/framelength))
+flash_start_max = int(round(.8/framelength))
+lilafterflash_constant = int(round(.3/framelength))
 squareafterlil = int(round(1/framelength))
 
 
@@ -112,14 +120,16 @@ blocks = 1  #this line is a placeholder; change blocksreal to change # of blocks
 blocksreal = 8
 intervals = 48
 intervals = round_to_multiple(intervals, blocksreal)
-reps = 8
+reps = 12
 liltrials = intervals * reps
 
-catch_to_noncatch = 12.5      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
-catchtrials = int(liltrials * catch_to_noncatch/100.0)
+percent_catch = .1      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
+catchtrials = int((percent_catch * liltrials) / (1 - percent_catch))
 
 trials = liltrials + catchtrials
 trialsperblock = trials/blocksreal
+
+validity = .7
 
 ptrials = 10
 qtrials = 30
@@ -139,7 +149,7 @@ inst1b = visual.TextStim(
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst1c = visual.TextStim(
-    win = win, text = "Then on some trials you will see a little square inside one of the two squares, and on other trials you will not see any little square. 75% of little squares will occur on the same side as the frame, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos=(-8, 0), height = 1, wrapWidth = 18)
+    win = win, text = "Then on some trials you will see a little square inside one of the two squares, and on other trials you will not see any little square. 70% of little squares will occur on the same side as the frame, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos=(-8, 0), height = 1, wrapWidth = 18)
 
 inst2 = visual.TextStim(
     win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left or right of the screen by pressing, respectively, the \"A\" or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision. Finally, please stay in the head mount during throughout the experiment.\n\nPress space to continue or \"B\" to go back.",
@@ -154,7 +164,7 @@ inst45 = visual.TextStim(
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst5 = visual.TextStim(
-    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 35 minutes. It will feature " + str(trials) + " trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
+    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 35 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst6 = visual.TextStim(
@@ -214,16 +224,29 @@ task_diagram_response = visual.ImageStim(
 
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
-catch_timing = [round(x * intervals * 1.0/catchtrials) for x in range(0, catchtrials)] # spaces out when the lilsquare comes on after the flash for catch trials
+def round_even(x):
+    return int(round(x / 2.) * 2)
+extra_valids = round_even(validity * liltrials - (8 * intervals)) / 2 # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to the two subgroups
+extra_invalids = intervals - extra_valids
+def last_reps(x,y):
+    return np.asarray([x]*extra_valids + [y]*extra_invalids)
+intervals_range = range(0, intervals * stagger, stagger)
+liltiming = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in range(reps)])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
+
+if catchtrials > intervals:  # spaces out when the lilsquare comes on after the flash for catch trials
+    catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in range(0, (catchtrials - intervals))]
+    catch_timing += range(0, intervals * stagger, stagger)
+else:
+    catch_timing = [round(x * intervals * 1.0 / (catchtrials)) for x in range(0, (catchtrials))]
 np.random.shuffle(catch_timing)
 
-expmatrix = [np.concatenate([np.repeat(range(-1, 2, 2), int(liltrials/2)), np.repeat(range(-1, 2, 2), int(catchtrials/2))]), #side of screen of lil
-                reps * range(0, intervals * stagger, stagger) + catch_timing,
+expmatrix = [np.concatenate([np.repeat(range(-1, 2, 2), int(intervals * (reps - 2) / 2)), np.repeat(range(-1, 2, 2), intervals), np.repeat(range(-1, 2, 2), int(catchtrials / 2))]), #side of screen of lil
+                liltiming + catch_timing, # CTI's
                 [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-                np.concatenate([np.repeat([-1, -1, -1, 1, 1, 1, 1, -1], int(liltrials/8)), np.repeat([-1, 1], int(catchtrials/2))]), # side of screen of flash
+                np.concatenate(([np.repeat([1, -1, -1, -1, -1, 1, 1, 1, 1, -1], intervals), last_reps(-1, 1), last_reps(1, -1), np.repeat([-1, 1], int(catchtrials/2))])), #side of screen of flash
                 np.asarray([random.randrange(square_x - square_size/2 + lilsize/2, square_x + square_size/2 - lilsize/2) for x in range(trials)]),
                 np.asarray([random.randrange(square_y - square_size/2 + lilsize/2, square_y + square_size/2 - lilsize/2) for y in range(trials)])]
-
+print expmatrix
 #randomization sequence
 randomseq = range(int(trials))
 np.random.shuffle(randomseq)
@@ -527,8 +550,10 @@ for rep in range(3):
 
                             if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1)):
                                 acc = 1
+                                soundp = soundfiles[0]
                             else:
                                 acc = 0
+                                soundp = soundfiles[1]
                             if rep == 1:
                                 trials.addResponse(acc)
                             acclist.append(acc)
@@ -573,6 +598,8 @@ for rep in range(3):
                 thisExp.addData('FlashSide', flash_side)
                 thisExp.addData('CorrSide', lil_side)
                 thisExp.nextEntry()
+                sound_clip.setSound(soundp)
+                sound_clip.play() #correct and incorrect sounds are both 250 ms
 
             if rep == 1:
                 q_opacity = trials.mean()

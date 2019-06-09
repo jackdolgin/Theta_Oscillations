@@ -80,7 +80,7 @@ main_function <- function(display, ext_objects, iso_sides, sbtr, samp_per,
   locations <- unique(cmbd$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
   pcpts <- unique(cmbd$participant)                                       # Creates vector of remaining participant numbers after `pcpts_combine` filtering
   cmbd_w <- cmbd %>%
-    pivot_wide(CTI:CatchAcc, Stim_Sides, !!dep_var_abbr) %>%
+    pivot_wider(CTI:CatchAcc, Stim_Sides, !!dep_var_abbr) %>%
     arrange(Acc_prefilter, participant, CTI) %>%
     group_by(participant) %>%
     mutate_at(vars(locations), list(~na.approx(., na.rm = FALSE, rule = 2)))

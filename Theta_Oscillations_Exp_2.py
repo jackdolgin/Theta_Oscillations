@@ -84,6 +84,13 @@ lilcolor = [-.35, -.35, -.35]
 opacity = .14
 
 
+##---------------------------SOUND NOISE & LOUDNESS---------------------------##
+
+sound_clip = sound.Sound('A')
+soundfiles = [os.path.join('stimuli','ding.wav'),
+              os.path.join('stimuli','chord.wav')]
+
+
 ##-----------------------TARGET INTERVALS & DURATION SIZES--------------------##
 
 framelength = win.monitorFramePeriod
@@ -94,9 +101,9 @@ lilduration = int(round(.0333/framelength))
 flash_duration = int(round(.0333/framelength))
 square_start_min = int(round(1/framelength))
 square_start_max = int(round(1.2/framelength))
-flash_start_min = int(round(.4167/framelength))
-flash_start_max = int(round(.8333/framelength))
-lilafterflash_constant = int(round(.5/framelength))
+flash_start_min = int(round(.4/framelength))
+flash_start_max = int(round(.8/framelength))
+lilafterflash_constant = int(round(.3/framelength))
 squareafterlil = int(round(1/framelength))
 
 
@@ -141,7 +148,7 @@ inst1b = visual.TextStim(
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst1c = visual.TextStim(
-    win = win, text = "Then on some trials you will see a little square inside one of the three squares, and on other trials you will not see any little square. 75% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+    win = win, text = "Then on some trials you will see a little square inside one of the three squares, and on other trials you will not see any little square. 70% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst2 = visual.TextStim(
     win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left, bottom, or right of the screen by pressing, respectively, the \"A\", \"B\", or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision. Finally, please stay in the head mount during throughout the experiment.\n\nPress space to continue or \"B\" to go back.",
@@ -156,7 +163,7 @@ inst45 = visual.TextStim(
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst5 = visual.TextStim(
-    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 35 minutes. It will feature " + str(trials) + " trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
+    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 35 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst6 = visual.TextStim(
@@ -226,14 +233,14 @@ target_y = np.concatenate([np.repeat([sides_y, bottom_y, sides_y], .75 * int(lil
 valid_timing = int(.75 * reps) * range(0, intervals * stagger, stagger)
 invalid_timing = int(.25 * reps) * range(0, intervals * stagger, stagger)
 np.random.shuffle(invalid_timing)
-catch_timing = [round(x * intervals * 1.0/catchtrials) for x in range(0, catchtrials)] # spaces out when the lilsquare comes on after the flash for catch trials
+catch_timing = [round(x * intervals * 1.0 / catchtrials) for x in range(0, catchtrials)] # spaces out when the lilsquare comes on after the flash for catch trials
 np.random.shuffle(catch_timing)
 
 expmatrix = [target_x,
             target_y,
             valid_timing + invalid_timing + catch_timing,
             [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-            np.concatenate([np.repeat(range(-1, 2), round(.75 * liltrials/3)), np.repeat([0,1], int(intervals * 2.0 / 3)), np.repeat([-1,1], int(intervals * 2.0 / 3)), np.repeat([-1,0], int(intervals * 2.0 / 3)), np.repeat(range(-1, 2), int(catchtrials/3))]), # side of screen of flash
+            np.concatenate([np.repeat(range(-1, 2), round(.75 * liltrials / 3)), np.repeat([0,1], int(intervals * 2.0 / 3)), np.repeat([-1,1], int(intervals * 2.0 / 3)), np.repeat([-1,0], int(intervals * 2.0 / 3)), np.repeat(range(-1, 2), int(catchtrials/3))]), # side of screen of flash
             np.concatenate([np.repeat([sides_y, bottom_y, sides_y], int(.75 * liltrials/3)), np.repeat([bottom_y, sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,bottom_y], int(intervals * 2.0 / 3)), np.repeat([sides_y, bottom_y, sides_y], int(catchtrials/3))]),
             np.asarray([random.randrange(sides_x * target_x[i] - square_size/2 + lilsize/2, sides_x * target_x[i] + square_size/2 - lilsize/2) for i in range(trials)]),
             np.asarray([random.randrange(target_y[i] - square_size/2 + lilsize/2, target_y[i] + square_size/2 - lilsize/2) for i in range(trials)])]
@@ -544,8 +551,10 @@ for rep in range(3):
 
                             if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['b'] and lil_side == 0)):
                                 acc = 1
+                                soundp = soundfiles[0]
                             else:
                                 acc = 0
+                                soundp = soundfiles[1]
                             if rep == 1:
                                 trials.addResponse(acc)
                             acclist.append(acc)
@@ -590,6 +599,8 @@ for rep in range(3):
                 thisExp.addData('FlashSide', flash_side)
                 thisExp.addData('CorrSide', lil_side)
                 thisExp.nextEntry()
+                sound_clip.setSound(soundp)
+                sound_clip.play() #correct and incorrect sounds are both 250 ms
 
             if rep == 1:
                 q_opacity = trials.mean()
