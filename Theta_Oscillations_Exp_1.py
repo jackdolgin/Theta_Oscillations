@@ -149,10 +149,10 @@ inst1b = visual.TextStim(
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst1c = visual.TextStim(
-    win = win, text = "Then on some trials you will see a little square inside one of the two squares, and on other trials you will not see any little square. 70% of little squares will occur on the same side as the frame, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos=(-8, 0), height = 1, wrapWidth = 18)
+    win = win, text = "Then on some trials you will see a little square inside one of the two squares, and on other trials you will not see any little square. " + str(int(validity * 100)) + "% of little squares will occur on the same side as the frame, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos=(-8, 0), height = 1, wrapWidth = 18)
 
 inst2 = visual.TextStim(
-    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left or right of the screen by pressing, respectively, the \"A\" or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision. Finally, please stay in the head mount during throughout the experiment.\n\nPress space to continue or \"B\" to go back.",
+    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left or right of the screen by pressing, respectively, the \"A\" or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision.\n\nPress space to continue or \"B\" to go back.",
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst3 = visual.TextStim(
@@ -341,7 +341,7 @@ for rep in range(3):
     q_acc = 0
     if rep == 2:
         blocks = blocksreal
-        np.random.shuffle(randomseq)
+        np.random.shuffle(randomseq) # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
     while q_acc < qcutoff:
         acclist = []
         if rep == 1:
@@ -391,7 +391,7 @@ for rep in range(3):
                 continueRoutineInst = True
 
                 inst7 = visual.TextStim(
-                    win = win, text = "You've reached break " + str(block) + " of " + str(blocks-1) + ". This break is self-timed, so whenever you're ready press spacebar to continue the study. Feel free to leave the head mount during the break, but when the break ends please return to your original position on the head mount.\n\nAs a reminder, 75% of little squares will be on the same side as the frame.",
+                    win = win, text = "You've reached break " + str(block) + " of " + str(blocks-1) + ". This break is self-timed, so whenever you're ready press spacebar to continue the study.\n\nAs a reminder, 75% of little squares will be on the same side as the frame.",
                     units = 'deg', height = 1, wrapWidth = 20)
 
                 advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
@@ -452,7 +452,7 @@ for rep in range(3):
                 if rep == 0:
                     trialopacity = opacity * startThresh
                 elif rep == 1:
-                    trialopacity = opacity * trial
+                    trialopacity = opacity * trial # trial here refers to the updated value in the staircase, not the actual trial number
                     trial = ptrials
                     ptrials += 1
                 else:
