@@ -1,5 +1,7 @@
 # PsychoPy is required for this experiment
-from psychopy import locale_setup, sound, gui, visual, core, data, event, logging, clock
+from psychopy import locale_setup, prefs, gui, visual, core, data, event, logging, clock, prefs
+prefs.general['audioLib'] = ['pyo']
+from psychopy import sound
 import numpy as np  # whole numpy lib is available, prepend 'np.'
 from numpy.random import random, randint, normal, shuffle
 import random
@@ -9,7 +11,7 @@ import math
 from itertools import chain
 
 # Ensure that relative paths start from the same directory as this script
-_thisDir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
+_thisDir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_thisDir)
 
 # Store info about the experiment session
@@ -226,29 +228,29 @@ task_diagram_response = visual.ImageStim(
 
 def round_even(x):
     return int(round(x / 2.) * 2)
-extra_valids = round_even(validity * liltrials - (8 * intervals)) / 2 # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to the two subgroups
+extra_valids = int(round_even(validity * liltrials - (8 * intervals)) / 2) # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to the two subgroups
 extra_invalids = intervals - extra_valids
 def last_reps(x,y):
     return np.asarray([x]*extra_valids + [y]*extra_invalids)
-intervals_range = range(0, intervals * stagger, stagger)
-liltiming = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in range(reps)])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
+intervals_range = list(range(0, intervals * stagger, stagger))
+liltiming = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
 
 if catchtrials > intervals:  # spaces out when the lilsquare comes on after the flash for catch trials
-    catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in range(0, (catchtrials - intervals))]
-    catch_timing += range(0, intervals * stagger, stagger)
+    catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in list(range(0, (catchtrials - intervals)))]
+    catch_timing += list(range(0, intervals * stagger, stagger))
 else:
-    catch_timing = [round(x * intervals * 1.0 / (catchtrials)) for x in range(0, (catchtrials))]
+    catch_timing = [round(x * intervals * 1.0 / (catchtrials)) for x in list(range(0, (catchtrials)))]
 np.random.shuffle(catch_timing)
 
-expmatrix = [np.concatenate([np.repeat(range(-1, 2, 2), int(intervals * (reps - 2) / 2)), np.repeat(range(-1, 2, 2), intervals), np.repeat(range(-1, 2, 2), int(catchtrials / 2))]), #side of screen of lil
+expmatrix = [np.concatenate([np.repeat(list(range(-1, 2, 2)), int(intervals * (reps - 2) / 2)), np.repeat(list(range(-1, 2, 2)), intervals), np.repeat(list(range(-1, 2, 2)), int(catchtrials / 2))]), #side of screen of lil
                 liltiming + catch_timing, # CTI's
                 [opacity] * liltrials + [0] * catchtrials, #opacity of lil
                 np.concatenate(([np.repeat([1, -1, -1, -1, -1, 1, 1, 1, 1, -1], intervals), last_reps(-1, 1), last_reps(1, -1), np.repeat([-1, 1], int(catchtrials/2))])), #side of screen of flash
-                np.asarray([random.randrange(square_x - square_size/2 + lilsize/2, square_x + square_size/2 - lilsize/2) for x in range(trials)]),
-                np.asarray([random.randrange(square_y - square_size/2 + lilsize/2, square_y + square_size/2 - lilsize/2) for y in range(trials)])]
-print expmatrix
+                np.asarray([random.randrange(square_x - square_size/2 + lilsize/2, square_x + square_size/2 - lilsize/2) for x in list(range(trials))]),
+                np.asarray([random.randrange(square_y - square_size/2 + lilsize/2, square_y + square_size/2 - lilsize/2) for y in list(range(trials))])]
+
 #randomization sequence
-randomseq = range(int(trials))
+randomseq = list(range(int(trials)))
 np.random.shuffle(randomseq)
 
 
@@ -331,13 +333,13 @@ while advance < 5:
 
 
 
-trials = range(ptrials)
+trials = list(range(ptrials))
 q_opacity = 0
 qloop = 0
 noncatch_count = 0
 repstaircase = []
 
-for rep in range(3):
+for rep in list(range(3)):
     q_acc = 0
     if rep == 2:
         blocks = blocksreal
@@ -386,7 +388,7 @@ for rep in range(3):
                 frameN += 1
                 win.flip()
 
-        for block in range(blocks):
+        for block in list(range(blocks)):
             if rep == 2:
                 continueRoutineInst = True
 
@@ -428,7 +430,7 @@ for rep in range(3):
                     win.flip()
 
                 startingtrial = block * trialsperblock
-                trials = range(startingtrial, startingtrial + trialsperblock)
+                trials = list(range(startingtrial, startingtrial + trialsperblock))
 
 
 
