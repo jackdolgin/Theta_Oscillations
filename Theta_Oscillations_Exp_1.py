@@ -27,7 +27,7 @@ filename = _thisDir + os.sep + u'data/%s/%s' % (expInfo['participant'], expInfo[
 # An ExperimentHandler isn't essential but helps with data saving
 thisExp = data.ExperimentHandler(extraInfo = expInfo, dataFileName = filename)
 # save a log file for detail verbose info
-logFile = logging.LogFile(filename+'.log', level = logging.EXP)
+logFile = logging.LogFile(filename + '.log', level = logging.EXP)
 logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file; unclear what this line does
 
 
@@ -43,7 +43,7 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 
 # Setup the Window
 win = visual.Window(
-    size = (1024, 768), color = [.15, .15, .15], fullscr = True,
+    size = (1024, 768), color = [.15, .15, .15], fullscr = False,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
@@ -206,19 +206,19 @@ lilsquare = visual.Rect(
     lineColor = shapecolor, fillColor = lilcolor, depth = -1.0)
 
 task_diagram_big_squares = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares_Exp_1.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_flash = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge_Exp_1.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_lilsquare = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare_Exp_1.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_response = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_response.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_response_Exp_1.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 
@@ -228,12 +228,12 @@ task_diagram_response = visual.ImageStim(
 
 def round_even(x):
     return int(round(x / 2.) * 2)
-extra_valids = int(round_even(validity * liltrials - (8 * intervals)) / 2) # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to the two subgroups
+extra_valids = int(round_even(validity * liltrials - (8 * intervals)) / 2) # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps
 extra_invalids = intervals - extra_valids
-def last_reps(x,y):
-    return np.asarray([x]*extra_valids + [y]*extra_invalids)
+def last_reps(x, y):
+    return np.asarray([x] * extra_valids + [y] * extra_invalids)
 intervals_range = list(range(0, intervals * stagger, stagger))
-liltiming = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
+lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
 
 if catchtrials > intervals:  # spaces out when the lilsquare comes on after the flash for catch trials
     catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in list(range(0, (catchtrials - intervals)))]
@@ -243,11 +243,12 @@ else:
 np.random.shuffle(catch_timing)
 
 expmatrix = [np.concatenate([np.repeat(list(range(-1, 2, 2)), int(intervals * (reps - 2) / 2)), np.repeat(list(range(-1, 2, 2)), intervals), np.repeat(list(range(-1, 2, 2)), int(catchtrials / 2))]), #side of screen of lil
-                liltiming + catch_timing, # CTI's
+                lil_timing + catch_timing, # CTI's
                 [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-                np.concatenate(([np.repeat([1, -1, -1, -1, -1, 1, 1, 1, 1, -1], intervals), last_reps(-1, 1), last_reps(1, -1), np.repeat([-1, 1], int(catchtrials/2))])), #side of screen of flash
-                np.asarray([random.randrange(square_x - square_size/2 + lilsize/2, square_x + square_size/2 - lilsize/2) for x in list(range(trials))]),
-                np.asarray([random.randrange(square_y - square_size/2 + lilsize/2, square_y + square_size/2 - lilsize/2) for y in list(range(trials))])]
+                np.concatenate(([np.repeat([1, -1, -1, -1, -1, 1, 1, 1, 1, -1], intervals), last_reps(-1, 1), last_reps(1, -1), np.repeat([-1, 1], int(catchtrials / 2))])), #side of screen of flash
+                np.asarray([random.randrange(square_x - square_size / 2 + lilsize / 2, square_x + square_size / 2 - lilsize / 2) for x in list(range(trials))]),
+                np.asarray([random.randrange(square_y - square_size / 2 + lilsize / 2, square_y + square_size / 2 - lilsize / 2) for y in list(range(trials))])]
+print str(len(expmatrix[0])) + str(len(expmatrix[1])) + str(len(expmatrix[2])) + str(len(expmatrix[3])) + str(len(expmatrix[4])) + str(len(expmatrix[5]))
 
 #randomization sequence
 randomseq = list(range(int(trials)))

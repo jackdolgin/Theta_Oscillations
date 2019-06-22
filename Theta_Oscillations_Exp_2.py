@@ -1,14 +1,17 @@
 # PsychoPy is required for this experiment
-from psychopy import locale_setup, sound, gui, visual, core, data, event, logging, clock
+from psychopy import locale_setup, prefs, gui, visual, core, data, event, logging, clock, prefs
+prefs.general['audioLib'] = ['pyo']
+from psychopy import sound
 import numpy as np  # whole numpy lib is available, prepend 'np.'
 from numpy.random import random, randint, normal, shuffle
 import random
 import os  # handy system and path functions
 import sys  # to get file system encoding
 import math
+from itertools import chain
 
 # Ensure that relative paths start from the same directory as this script
-_thisDir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
+_thisDir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_thisDir)
 
 # Store info about the experiment session
@@ -24,7 +27,7 @@ filename = _thisDir + os.sep + u'data/%s/%s' % (expInfo['participant'], expInfo[
 # An ExperimentHandler isn't essential but helps with data saving
 thisExp = data.ExperimentHandler(extraInfo = expInfo, dataFileName = filename)
 # save a log file for detail verbose info
-logFile = logging.LogFile(filename+'.log', level = logging.EXP)
+logFile = logging.LogFile(filename + '.log', level = logging.EXP)
 logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file; unclear what this line does
 
 
@@ -40,7 +43,7 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 
 # Setup the Window
 win = visual.Window(
-    size = (1024, 768), color = [.15, .15, .15], fullscr = True,
+    size = (1024, 768), color = [.15, .15, .15], fullscr = False,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
@@ -63,7 +66,7 @@ lilsize = round_up_to_even(lilsize)
 def round_up_to_lilsize_multiple(f):
     return math.ceil(f * 1.0 /lilsize) * lilsize
 
-square_size = 160
+square_size = 210
 square_size = round_up_to_lilsize_multiple(square_size)
 
 flash_size = 1.15
@@ -121,11 +124,15 @@ blocks = 1  #this line is a placeholder; change blocksreal to change # of blocks
 blocksreal = 8
 intervals = 48
 intervals = round_to_multiple(intervals, blocksreal)
-reps = 8
+reps = 12
 liltrials = intervals * reps
 
-catch_to_noncatch = 12.5      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
-catchtrials = int(liltrials * catch_to_noncatch/100.0)
+percent_catch = .1      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
+
+def round_to_three(x):
+    return int(round(x / 3.) * 3)
+
+catchtrials = round_to_three((percent_catch * liltrials) / (1 - percent_catch))
 
 trials = liltrials + catchtrials
 trialsperblock = trials/blocksreal
@@ -210,19 +217,19 @@ lilsquare = visual.Rect(
     lineColor = shapecolor, fillColor = lilcolor, depth = -1.0)
 
 task_diagram_big_squares = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_1_600.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares_Exp_2.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_flash = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_2_600.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge_Exp_2.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_lilsquare = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_3_600.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare_Exp_2.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_response = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_4_600.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_response_Exp_2.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 
@@ -230,26 +237,48 @@ task_diagram_response = visual.ImageStim(
 
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
-target_x = np.concatenate([np.repeat(range(-1, 2), int(.75 * liltrials/3)), np.repeat(range(-1, 2), int(.25 * liltrials/3)), np.repeat(range(-1, 2), int(catchtrials/3))])
-target_y = np.concatenate([np.repeat([sides_y, bottom_y, sides_y], .75 * int(liltrials/3)), np.repeat([sides_y, bottom_y, sides_y], int(.25 * liltrials/3)), np.repeat([sides_y, bottom_y, sides_y], int(catchtrials/3))])
-valid_timing = int(.75 * reps) * range(0, intervals * stagger, stagger)
-invalid_timing = int(.25 * reps) * range(0, intervals * stagger, stagger)
-np.random.shuffle(invalid_timing)
-catch_timing = [round(x * intervals * 1.0 / catchtrials) for x in range(0, catchtrials)] # spaces out when the lilsquare comes on after the flash for catch trials
+extra_valids = int(round_to_three(validity * liltrials - (6 * intervals)) / 3) # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps
+extra_invalids = (intervals - extra_valids) / 2
+
+def lastreps(x, y, z):
+    return np.asarray([x] * extra_valids + [y, z] * extra_invalids)
+def invalids(x, y):
+    return np.asarray([x, y] * (intervals / 2))
+
+x_list = list(range(-1, 2))
+y_list = [sides_y, bottom_y, sides_y]
+
+target_x = np.concatenate([np.repeat(x_list, intervals * 2), np.repeat(x_list, intervals), np.repeat(x_list, intervals), np.repeat(x_list, int(catchtrials / 3))]) #side of screen of lil
+
+target_y = np.concatenate([np.repeat(y_list, intervals * 2), np.repeat(y_list, intervals), np.repeat(x_list, intervals), np.repeat(y_list, int(catchtrials / 3))]) #side of screen of lil
+
+flash_x = np.concatenate([np.repeat(x_list, intervals * 2), lastreps(-1, 0, 1), lastreps(0, -1, 1), lastreps(1, 0, -1), invalids(0, 1), invalids(-1, 1), invalids(-1, 0), np.repeat(x_list, int(catchtrials / 3))])
+
+flash_y = np.concatenate([np.repeat(y_list, intervals * 2), lastreps(sides_y, bottom_y, sides_y), lastreps(bottom_y, sides_y, sides_y), lastreps(sides_y, bottom_y, sides_y), invalids(bottom_y, sides_y), invalids(sides_y, sides_y), invalids(sides_y, bottom_y), np.repeat(y_list, int(catchtrials / 3))])
+
+intervals_range = list(range(0, intervals * stagger, stagger))
+lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
+
+if catchtrials > intervals:  # spaces out when the lilsquare comes on after the flash for catch trials
+    catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in list(range(0, (catchtrials - intervals)))]
+    catch_timing += list(range(0, intervals * stagger, stagger))
+else:
+    catch_timing = [round(x * intervals * 1.0 / (catchtrials)) for x in list(range(0, (catchtrials)))]
 np.random.shuffle(catch_timing)
 
 expmatrix = [target_x,
             target_y,
-            valid_timing + invalid_timing + catch_timing,
+            lil_timing + catch_timing,
             [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-            np.concatenate([np.repeat(range(-1, 2), round(.75 * liltrials / 3)), np.repeat([0,1], int(intervals * 2.0 / 3)), np.repeat([-1,1], int(intervals * 2.0 / 3)), np.repeat([-1,0], int(intervals * 2.0 / 3)), np.repeat(range(-1, 2), int(catchtrials/3))]), # side of screen of flash
-            np.concatenate([np.repeat([sides_y, bottom_y, sides_y], int(.75 * liltrials/3)), np.repeat([bottom_y, sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,sides_y], int(intervals * 2.0 / 3)), np.repeat([sides_y,bottom_y], int(intervals * 2.0 / 3)), np.repeat([sides_y, bottom_y, sides_y], int(catchtrials/3))]),
-            np.asarray([random.randrange(sides_x * target_x[i] - square_size/2 + lilsize/2, sides_x * target_x[i] + square_size/2 - lilsize/2) for i in range(trials)]),
-            np.asarray([random.randrange(target_y[i] - square_size/2 + lilsize/2, target_y[i] + square_size/2 - lilsize/2) for i in range(trials)])]
-
+            flash_x, # side of screen of flash
+            flash_y, # y-value of flash
+            np.asarray([random.randrange(sides_x * target_x[i] - square_size / 2 + lilsize / 2, sides_x * target_x[i] + square_size / 2 - lilsize / 2) for i in list(range(trials))]), # randomize target's x value
+            np.asarray([random.randrange(target_y[i] - square_size / 2 + lilsize / 2, target_y[i] + square_size / 2 - lilsize / 2) for i in list(range(trials))])] # randomize target's y value
+print expmatrix
+print str(len(expmatrix[0])) + str(len(expmatrix[1])) + str(len(expmatrix[2])) + str(len(expmatrix[3])) + str(len(expmatrix[4])) + str(len(expmatrix[5])) + str(len(expmatrix[6])) + str(len(expmatrix[7]))
 
 #randomization sequence
-randomseq = range(int(trials))
+randomseq = list(range(int(trials)))
 np.random.shuffle(randomseq)
 
 
@@ -332,13 +361,13 @@ while advance < 5:
 
 
 
-trials = range(ptrials)
+trials = list(range(ptrials))
 q_opacity = 0
 qloop = 0
 noncatch_count = 0
 repstaircase = []
 
-for rep in range(3):
+for rep in list(range(3)):
     q_acc = 0
     if rep == 2:
         blocks = blocksreal
@@ -387,7 +416,7 @@ for rep in range(3):
                 frameN += 1
                 win.flip()
 
-        for block in range(blocks):
+        for block in list(range(blocks)):
             if rep == 2:
                 continueRoutineInst = True
 
@@ -429,7 +458,7 @@ for rep in range(3):
                     win.flip()
 
                 startingtrial = block * trialsperblock
-                trials = range(startingtrial, startingtrial + trialsperblock)
+                trials = list(range(startingtrial, startingtrial + trialsperblock))
 
 
 
