@@ -15,8 +15,8 @@ _thisDir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_thisDir)
 
 # Store info about the experiment session
-expName = 'Theta_Oscillations_Exp_1.py'
-expInfo = {'participant': ''}     #creates dictionary of experiment information
+expName = 'Theta_Oscillations_script.py'
+expInfo = {'participant': '', 'session':''}     #creates dictionary of experiment information
 dlg = gui.DlgFromDict(dictionary = expInfo, title = expName)    #creates popup at beginning of experiment that asks for participant number
 if dlg.OK == False: #says, if you hit escape/click cancel when that popup appears, then don't run the experiment; if this if statement didn't exist, experiment would run regardly of whether you hit escape/click cancel
     core.quit()  # user pressed cancel
@@ -41,13 +41,29 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 
 
 
+# Setup different tasks
+all_keys = ["l","L","a","A"]
+
+task = int(expInfo['session'])
+if task == 2:
+    num_to_word = "two"
+    third_spot = ""
+    third_key = ""
+else:
+    num_to_word = "three"
+    third_spot = ", bottom,"
+    third_key = ", \"B\","
+    all_keys += ["b", "B"]
+
+
 # Setup the Window
 win = visual.Window(
-    size = (1024, 768), color = [.15, .15, .15], fullscr = False,
+    size = (1024, 768), color = [.15, .15, .15], fullscr = True,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
 expInfo['frameRate'] = f_rate
+
 
 
 ##----------------------------------------------------------------------------##
@@ -69,11 +85,17 @@ def round_up_to_lilsize_multiple(f):
 square_size = 210
 square_size = round_up_to_lilsize_multiple(square_size)
 
-flash_size = 1.15
+bulge_size = 1.15
 cross_size = .07
-square_x = 280
-square_y = 0
 
+if task == 2:
+    sides_x = 280
+    sides_y = bottom_y = 0
+else:
+    square_mult = 528
+    sides_x = int(square_mult / 2)
+    sides_y = int(square_mult * math.sqrt(3) / 6)
+    bottom_y = int(-square_mult * math.sqrt(3) / 4)
 
 
 ##-----------------------------SHAPE COLORS-----------------------------------##
@@ -99,12 +121,12 @@ framelength = win.monitorFramePeriod
 stagger = int(round(.0167/framelength)) #frame rate is the units
 blockdelay = int(round(1.5/framelength)) #creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
 lilduration = int(round(.0333/framelength))
-flash_duration = int(round(.0333/framelength))
+bulge_duration = int(round(.0333/framelength))
 square_start_min = int(round(1/framelength))
 square_start_max = int(round(1.2/framelength))
-flash_start_min = int(round(.4/framelength))
-flash_start_max = int(round(.8/framelength))
-lilafterflash_constant = int(round(.3/framelength))
+bulge_start_min = int(round(.4/framelength))
+bulge_start_max = int(round(.8/framelength))
+lilafterbulge_constant = int(round(.3/framelength))
 squareafterlil = int(round(1/framelength))
 
 
@@ -126,7 +148,11 @@ reps = 12
 liltrials = intervals * reps
 
 percent_catch = .1      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
-catchtrials = int((percent_catch * liltrials) / (1 - percent_catch))
+
+def round_to_task(x):
+    return int(round(x / float(task)) * task)
+
+catchtrials = round_to_task((percent_catch * liltrials) / (1 - percent_catch))
 
 trials = liltrials + catchtrials
 trialsperblock = trials/blocksreal
@@ -143,7 +169,7 @@ acc_aim = .65
 ##-------------------------------INSTRUCTION SCREEN---------------------------##
 
 inst1a = visual.TextStim(
-    win = win, text = "This study will begin with " + str(ptrials + qtrials) + " practice trials. On each practice trial, like each trial in the main experiment, you will see two big squares appear on the screen.\n\nPress space to continue.",
+    win = win, text = "This study will begin with " + str(ptrials + qtrials) + " practice trials. On each practice trial, like each trial in the main experiment, you will see " + num_to_word + " big squares appear on the screen.\n\nPress space to continue.",
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst1b = visual.TextStim(
@@ -151,14 +177,15 @@ inst1b = visual.TextStim(
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst1c = visual.TextStim(
-    win = win, text = "Then on some trials you will see a little square inside one of the two squares, and on other trials you will not see any little square. " + str(int(validity * 100)) + "% of little squares will occur on the same side as the frame, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.", units='deg', pos=(-8, 0), height = 1, wrapWidth = 18)
+    win = win, text = "Then on some trials you will see a little square inside one of the " + num_to_word + " squares, and on other trials you will not see any little square square. " + str(int(validity * 100)) + "% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.",
+    units='deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst2 = visual.TextStim(
-    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left or right of the screen by pressing, respectively, the \"A\" or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision.\n\nPress space to continue or \"B\" to go back.",
+    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left" + third_spot + " or right of the screen by pressing, respectively, the \"A\"" + third_key + " or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision.\n\nPress space to continue or \"B\" to go back.",
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst3 = visual.TextStim(
-    win = win, text = "Again, these are practice trials, and if you do well enough on the practice trials, you will move on directly to the main experiment; otherwise you'll get a second chance to improve on the practice. As a reminder, when the little square appears, you will have one second to indicate whether it was on the left or right of the screen by pressing, respectively, the \"A\" or \"L\" keys.\n\nPress space to begin or \"B\" to go back.",
+    win = win, text = "Again, these are practice trials, and if you do well enough on the practice trials, you will move on directly to the main experiment; otherwise you'll get a second chance to improve on the practice. As a reminder, when the little square appears, you will have one second to indicate whether it was on the left" + third_spot + " or right of the screen by pressing, respectively, the \"A\"" + third_key + " or \"L\" keys.\n\nPress space to begin or \"B\" to go back.",
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst45 = visual.TextStim(
@@ -170,7 +197,7 @@ inst5 = visual.TextStim(
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst6 = visual.TextStim(
-    win = win, text = "The forthcoming trials will work just like the practice trials: two big squares, a frame, and then one second to push a button to answer on which side the little square appeared, or not to push a button in case you did not see a little square. Again, please gaze at the cross in the center of the screen the whole time and only use peripheral vision to detect the little square.\n\nPress space to begin or \"B\" to go back.",
+    win = win, text = "The forthcoming trials will work just like the practice trials: " + num_to_word + " big squares, a bulge, and then one second to push a button to answer where the little square appeared, or not to push a button in case you did not see a little square. Again, please gaze at the cross in the center of the screen the whole time and only use peripheral vision to detect the little square.\n\nPress space to begin or \"B\" to go back.",
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst8 = visual.TextStim(
@@ -186,19 +213,24 @@ cross = visual.ShapeStim(
     [0, 0], [-.1501 * cross_size, 0], [0, 0]], lineWidth = 2,
     lineColor = crosscolor, depth = -1.0)
 
+square_bottom = visual.Rect(
+    win = win, units = 'pix', height = square_size, width = square_size,
+    pos = (0, bottom_y), lineColor = shapecolor,
+    fillColor = shapecolor, depth = -1.0)
+
 square_right = visual.Rect(
     win = win, units = 'pix', height = square_size, width = square_size,
-    pos = (square_x, square_y), lineColor = shapecolor, fillColor = shapecolor,
-    depth = -1.0)
+    pos = (sides_x, sides_y),
+    lineColor = shapecolor, fillColor = shapecolor, depth = -1.0)
 
 square_left = visual.Rect(
     win = win, units = 'pix', height = square_size, width = square_size,
-    pos = (-square_x, square_y), lineColor = shapecolor, fillColor = shapecolor,
-    depth = -1.0)
-
-outer_frame = visual.Rect(
+    pos = (-sides_x, sides_y),
+    lineColor = shapecolor, fillColor = shapecolor, depth = -1.0)
+# differing than exp 2
+bulge = visual.Rect(
     win = win, units = 'pix', height = square_size * 1.1, width = square_size * 1.1,
-    pos = (square_x, square_y), lineColor = shapecolor,
+    pos = (0, 0), lineColor = shapecolor,
     fillColor = shapecolor, depth = -1.0)
 
 lilsquare = visual.Rect(
@@ -206,19 +238,19 @@ lilsquare = visual.Rect(
     lineColor = shapecolor, fillColor = lilcolor, depth = -1.0)
 
 task_diagram_big_squares = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares_Exp_1.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares_task_' + str(task) + '.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
-task_diagram_flash = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge_Exp_1.png'),
+task_diagram_bulge = visual.ImageStim(
+    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge_task_' + str(task) + '.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_lilsquare = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare_Exp_1.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare_task_' + str(task) + '.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 task_diagram_response = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_response_Exp_1.png'),
+    win = win, image = os.path.join('stimuli', 'stim_presentation_response_task_' + str(task) + '.png'),
     pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 
@@ -226,29 +258,67 @@ task_diagram_response = visual.ImageStim(
 
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
-def round_even(x):
-    return int(round(x / 2.) * 2)
-extra_valids = int(round_even(validity * liltrials - (8 * intervals)) / 2) # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps
+extra_valids = int(round_to_task(validity * liltrials - ((reps - (2 * task)) * intervals)) / task) # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps
 extra_invalids = intervals - extra_valids
+
+x_list = list(range(-1, 2, 4 - task))
+y_list = [sides_y, bottom_y, sides_y]
+
 def last_reps(x, y):
     return np.asarray([x] * extra_valids + [y] * extra_invalids)
+
+def lastreps(x, y, z):
+    return np.asarray([x] * extra_valids + [y, z] * (extra_invalids / 2))
+
+def invalids(x, y):
+    return np.asarray([x, y] * (intervals / 2))
+
+def peat_int(x, y):
+    return np.repeat(x, intervals * y)
+
+def peat_catch(x):
+    return np.repeat(x, int(catchtrials / task))
+
+if task == 2:
+
+    target_x = np.concatenate([np.repeat(x_list, int(intervals * (reps - 2) / 2)), peat_int(x_list, 1), peat_catch(x_list)])
+
+    bulge_x = np.concatenate([peat_int([1, -1, -1, -1, -1, 1, 1, 1, 1, -1], 1), last_reps(-1, 1), last_reps(1, -1), peat_catch([-1, 1])])
+
+    bulge_y = [sides_y] * trials
+
+else:
+
+    target_x = np.concatenate([peat_int(x_list, 2), peat_int(x_list, 1), peat_int(x_list, 1), peat_catch(x_list)])
+
+    bulge_x = np.concatenate([peat_int(x_list, 2), lastreps(-1, 0, 1), lastreps(0, -1, 1), lastreps(1, 0, -1), invalids(0, 1), invalids(-1, 1), invalids(-1, 0), peat_catch(x_list)])
+
+    bulge_y = np.concatenate([peat_int(y_list, 2), lastreps(sides_y, bottom_y, sides_y), lastreps(bottom_y, sides_y, sides_y), lastreps(sides_y, bottom_y, sides_y), invalids(bottom_y, sides_y), invalids(sides_y, sides_y), invalids(sides_y, bottom_y), peat_catch(y_list)])
+
+target_y = np.concatenate([peat_int(y_list, 2), peat_int(y_list, 1), peat_int(y_list, 1), peat_catch(y_list)])
+
+rand_x = np.asarray([random.randrange(sides_x * target_x[i] - square_size / 2 + lilsize / 2, sides_x * target_x[i] + square_size / 2 - lilsize / 2) for i in list(range(trials))])
+
+rand_y = np.asarray([random.randrange(target_y[i] - square_size / 2 + lilsize / 2, target_y[i] + square_size / 2 - lilsize / 2) for i in list(range(trials))])
+
 intervals_range = list(range(0, intervals * stagger, stagger))
 lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
 
-if catchtrials > intervals:  # spaces out when the lilsquare comes on after the flash for catch trials
+if catchtrials > intervals:  # spaces out when the lilsquare comes on after the bulge for catch trials
     catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in list(range(0, (catchtrials - intervals)))]
     catch_timing += list(range(0, intervals * stagger, stagger))
 else:
     catch_timing = [round(x * intervals * 1.0 / (catchtrials)) for x in list(range(0, (catchtrials)))]
 np.random.shuffle(catch_timing)
 
-expmatrix = [np.concatenate([np.repeat(list(range(-1, 2, 2)), int(intervals * (reps - 2) / 2)), np.repeat(list(range(-1, 2, 2)), intervals), np.repeat(list(range(-1, 2, 2)), int(catchtrials / 2))]), #side of screen of lil
-                lil_timing + catch_timing, # CTI's
-                [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-                np.concatenate(([np.repeat([1, -1, -1, -1, -1, 1, 1, 1, 1, -1], intervals), last_reps(-1, 1), last_reps(1, -1), np.repeat([-1, 1], int(catchtrials / 2))])), #side of screen of flash
-                np.asarray([random.randrange(square_x - square_size / 2 + lilsize / 2, square_x + square_size / 2 - lilsize / 2) for x in list(range(trials))]),
-                np.asarray([random.randrange(square_y - square_size / 2 + lilsize / 2, square_y + square_size / 2 - lilsize / 2) for y in list(range(trials))])]
-print str(len(expmatrix[0])) + str(len(expmatrix[1])) + str(len(expmatrix[2])) + str(len(expmatrix[3])) + str(len(expmatrix[4])) + str(len(expmatrix[5]))
+expmatrix = [target_x, # side of screen of lil
+            bulge_x, # side of screen of bulge
+            bulge_y, # y-value of bulge
+            rand_x, # randomize target's x value
+            rand_y, # randomize target's y value
+            [opacity] * liltrials + [0] * catchtrials, #opacity of lil
+            lil_timing + catch_timing]
+
 
 #randomization sequence
 randomseq = list(range(int(trials)))
@@ -273,7 +343,7 @@ np.random.shuffle(randomseq)
 ##----------------------------------------------------------------------------##
 
 
-##---------------------START PRACTICE INSTRUCTIONS----------------------------##21
+##---------------------START PRACTICE INSTRUCTIONS----------------------------##
 
 advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
 
@@ -288,7 +358,7 @@ while advance < 5:
         inst1c.setAutoDraw(False)
         inst2.setAutoDraw(False)
         inst3.setAutoDraw(False)
-        task_diagram_flash.setAutoDraw(False)
+        task_diagram_bulge.setAutoDraw(False)
         task_diagram_lilsquare.setAutoDraw(False)
         task_diagram_response.setAutoDraw(False)
         inst1a.setAutoDraw(True)
@@ -302,12 +372,12 @@ while advance < 5:
         task_diagram_lilsquare.setAutoDraw(False)
         task_diagram_response.setAutoDraw(False)
         inst1b.setAutoDraw(True)
-        task_diagram_flash.setAutoDraw(True)
+        task_diagram_bulge.setAutoDraw(True)
     elif advance == 2:
         inst1b.setAutoDraw(False)
         inst2.setAutoDraw(False)
         inst3.setAutoDraw(False)
-        task_diagram_flash.setAutoDraw(False)
+        task_diagram_bulge.setAutoDraw(False)
         task_diagram_response.setAutoDraw(False)
         inst1c.setAutoDraw(True)
         task_diagram_lilsquare.setAutoDraw(True)
@@ -459,34 +529,34 @@ for rep in list(range(3)):
                     trial = ptrials
                     ptrials += 1
                 else:
-                    extracted_opacity = expmatrix[2][randomseq[trial]]
+                    extracted_opacity = expmatrix[5][randomseq[trial]]
                     if extracted_opacity > 0:
                         if noncatch_count > 0 and noncatch_count % 16 == 0:
                             repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase)
                             q_opacity += .033 * (acc_aim - repstair_avg)
                             repstaircase = []
-                        noncatch_count += 1
-                    trialopacity = extracted_opacity * q_opacity #whether no opacity * threshold
+                        noncatch_count += 1 # counts number of experimental (non-catch) trials before re-implementing staircase/ updated opacity
+                    trialopacity = extracted_opacity * q_opacity # whether no opacity * threshold
 
                 lilsquare.setOpacity(trialopacity)
 
 
-                ##----------------SET TARGET & FLASH LOCATIONS----------------##
+                ##----------------SET TARGET & bulge LOCATIONS----------------##
 
                 lil_side = expmatrix[0][randomseq[trial]]
-                flash_side = expmatrix[3][randomseq[trial]]
-                outer_frame.setPos([square_x * flash_side, square_y])
-                lilsquare.setPos([expmatrix[4][randomseq[trial]] * lil_side, expmatrix[5][randomseq[trial]]])
+                lilsquare.setPos([[expmatrix[3][randomseq[trial]], expmatrix[4][randomseq[trial]]]])
+                bulge_side = expmatrix[1][randomseq[trial]]
+                bulge.setPos([bulge_side * sides_x, expmatrix[2][randomseq[trial]]])
 
 
                 ##--------------SET START & DURATION OF STIMULI---------------##
 
                 square_start = random.randrange(square_start_min, square_start_max + 1)
-                flash_start = square_start + random.randrange(flash_start_min, flash_start_max + 1)
-                flash_end = flash_start + flash_duration
+                bulge_start = square_start + random.randrange(bulge_start_min, bulge_start_max + 1)
+                bulge_end = bulge_start + bulge_duration
 
-                lilafterflash = expmatrix[1][randomseq[trial]]
-                lilstart = flash_end + lilafterflash_constant + lilafterflash
+                lilafterbulge = expmatrix[6][randomseq[trial]]
+                lilstart = bulge_end + lilafterbulge_constant + lilafterbulge
                 lilend = lilstart + lilduration
 
                 squareend = lilend + squareafterlil
@@ -512,7 +582,7 @@ for rep in list(range(3)):
                     t = trialClock.getTime()
                     frameN += 1  # number of completed frames (so 0 is the first frame)
 
-                    key = event.getKeys(keyList = ["l","L","a","A"])
+                    key = event.getKeys(keyList = all_keys)
 
                     ##----------------SHAPES UPDATE---------------------------##
 
@@ -521,14 +591,16 @@ for rep in list(range(3)):
                         square_right.frameStart = frameN
                         square_right.setAutoDraw(True)
                         square_left.setAutoDraw(True)
-                    elif frameN == flash_start:
-                        outer_frame.tStart = t
-                        outer_frame.frameStart = frameN
-                        outer_frame.setAutoDraw(True)
-                    elif frameN == flash_end:
-                        outer_frame.setAutoDraw(False)
-                        outer_frame.tEnd = t
-                        outer_frame.frameEnd = frameN
+                        if task == 3:
+                            square_bottom.setAutoDraw(True)
+                    elif frameN == bulge_start:
+                        bulge.tStart = t
+                        bulge.frameStart = frameN
+                        bulge.setAutoDraw(True)
+                    elif frameN == bulge_end:
+                        bulge.setAutoDraw(False)
+                        bulge.tEnd = t
+                        bulge.frameEnd = frameN
                     elif frameN == lilstart:
                         lilsquare.tStart = t
                         lilsquare.frameStart = frameN
@@ -546,12 +618,13 @@ for rep in list(range(3)):
                             continueRoutine = False
                             square_right.setAutoDraw(False)
                             square_left.setAutoDraw(False)
+                            square_bottom.setAutoDraw(False)
                             cross.setAutoDraw(False)
 
 
                             ##-------------CHECK FOR RESPONSE-----------------##
 
-                            if (key == ['nope'] and trialopacity == 0) or ((key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1)):
+                            if (key == ['nope'] and trialopacity == 0) or (key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['b'] and lil_side == 0):
                                 acc = 1
                                 soundp = soundfiles[0]
                             else:
@@ -582,24 +655,24 @@ for rep in list(range(3)):
                     if trialopacity > 0:
                         repstaircase.append(acc)
                 thisExp.addData('ButtonPressTimeinOverallExp', overalltime)
-                thisExp.addData('squareStartTime', square_right.tStart)
-                thisExp.addData('squareStartFrame', square_right.frameStart)
-                thisExp.addData('flash_circleStartTime', outer_frame.tStart)
-                thisExp.addData('flash_circleStartFrame', outer_frame.frameStart)
-                thisExp.addData('flash_circleEndTime', outer_frame.tEnd)
-                thisExp.addData('flash_circleEndFrame', outer_frame.frameEnd)
-                thisExp.addData('lilsquareStartTime', lilsquare.tStart)
-                thisExp.addData('lilsquareStartFrame', lilsquare.frameStart)
-                thisExp.addData('lilsquareEndTime', lilsquare.tEnd)
-                thisExp.addData('lilsquareEndFrame', lilsquare.frameEnd)
-                thisExp.addData('lilafterflash', lilafterflash)
-                thisExp.addData('ButtonPressTime', t)
+                thisExp.addData('SquaresStartTime', square_right.tStart)
+                thisExp.addData('SquaresStartFrame', square_right.frameStart)
+                thisExp.addData('BulgeStartTime', bulge.tStart)
+                thisExp.addData('BulgeStartFrame', bulge.frameStart)
+                thisExp.addData('Bulge_EndTime', bulge.tEnd)
+                thisExp.addData('Bulge_EndFrame', bulge.frameEnd)
+                thisExp.addData('lilSquareStartTime', lilsquare.tStart)
+                thisExp.addData('lilSquareStartFrame', lilsquare.frameStart)
+                thisExp.addData('lilSquareEndTime', lilsquare.tEnd)
+                thisExp.addData('lilSquareEndFrame', lilsquare.frameEnd)
+                thisExp.addData('lilAfterBulge', lilafterbulge)
+                thisExp.addData('Button_Press_Time', t)
                 thisExp.addData('Key', key[0])
-                thisExp.addData('false_presses', lenkeylist)
+                thisExp.addData('False_Presses', lenkeylist)
                 thisExp.addData('Acc', acc)
                 thisExp.addData('Opacity', trialopacity)
-                thisExp.addData('FlashSide', flash_side)
-                thisExp.addData('CorrSide', lil_side)
+                thisExp.addData('Bulge_Side', bulge_side)
+                thisExp.addData('Corr_Side', lil_side)
                 thisExp.nextEntry()
                 sound_clip.setSound(soundp)
                 sound_clip.play() #correct and incorrect sounds are both 250 ms
