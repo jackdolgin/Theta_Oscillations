@@ -18,7 +18,7 @@ theta_1_2_study <- study(
   add_analysis(
     func = "main_function",
     params = list(
-      pilot = FALSE,
+      dset = "Experimental",
       display = "FFT Across Participants",
       ext_objects = 2,
       iso_sides = FALSE,
@@ -47,7 +47,7 @@ theta_1_2_study <- study(
   add_analysis(
     func = "main_function",
     params = list(
-      pilot = FALSE,
+      dset = "Experimental",
       display = "FFT Across Participants",
       ext_objects = 3,
       iso_sides = FALSE,
@@ -72,12 +72,6 @@ theta_1_2_study <- study(
       CTI_range = c(.3, 1.29)
     ),
     id = "main_analysis_h2") %>%
-  study_analyse()
+  study_analyze()
   
 study_save(theta_1_2_study, "pre_data_theta_1_2_study.json")
-
-rm(theta_1_2_study)
-rm(main_function)
-
-theta_1_2_study <- study("pre_data_theta_1_2_study.json")
-

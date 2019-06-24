@@ -6,7 +6,7 @@ ui <- fluidPage(
   title = "Theta Oscillations Analysis",
   plotOutput("mygraph",  height = 800, width = 1350),
   hr(),       
-  fluidRow(class = "text-center", 
+  fluidRow(class = "text-center",
            column(4, h3( "Data Set, Task, and Graph Choice"), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
            column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Experimental", status = "primary")),
@@ -62,7 +62,7 @@ server <- function(input, output, session) {
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter, Acc_postfilter, CatchAcc)
   
   observe({
-    pcpts <- if (input$dset == 'pilot') {
+    pcpts <- if (input$dset == 'Pilot') {
       if(input$ext_objects == 2) 301:324 else 401:427
     } else {if(input$ext_objects == 2) 501:530 else 601:630}
 

@@ -15,7 +15,7 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means
                          Acc_postfilter, CatchAcc)                              # don't have to type them out every time we use them for grouping
   
-  pcpts <- if (dset == 'pilot') {
+  pcpts <- if (dset == 'Pilot') {
     if(ext_objects == 2) 301:324 else 401:427
     } else {if(ext_objects == 2) 501:530 else 601:630}
   
@@ -318,7 +318,7 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
 
 # Sets inputs for the `main_function` function
 main_function(display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `Time-Series + FFT by Individual`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
-              dset = "experimental",                                             # Either `pilot` for pilot participants or `experimental` for experimental participants
+              dset = "Experimental",                                            # Either `Pilot` for pilot participants or `Experimental` for experimental participants
               ext_objects = 2,                                                  # `2` corresponds to the two-object task, `3` to the three-object task
               iso_sides = FALSE,                                                # Either `FALSE` or `TRUE`, which groups by not only valid and invalid but also by the side of the screen for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`, `Left Invalid`)
               sbtr = FALSE,                                                     # Either `FALSE` or `TRUE`, which subtracts the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently
