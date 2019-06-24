@@ -533,7 +533,7 @@ for rep in list(range(3)):
                     if extracted_opacity > 0:
                         if noncatch_count > 0 and noncatch_count % 16 == 0:
                             repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase)
-                            q_opacity += .033 * (acc_aim - repstair_avg)
+                            q_opacity += .6 * (acc_aim - repstair_avg)
                             repstaircase = []
                         noncatch_count += 1 # counts number of experimental (non-catch) trials before re-implementing staircase/ updated opacity
                     trialopacity = extracted_opacity * q_opacity # whether no opacity * threshold
