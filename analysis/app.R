@@ -9,7 +9,7 @@ ui <- fluidPage(
   fluidRow(class = "text-center",
            column(4, h3( "Data Set, Task, and Graph Choice"), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
-           column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Experimental", status = "primary")),
+           column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Pilot", status = "primary")),
            column(5, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
            column(4, radioGroupButtons("display", choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary"))
            ),
@@ -54,7 +54,7 @@ ui <- fluidPage(
             column(4,
                    sliderInput("miniblock_range", "Mini-Block Accuracy Cutoffs", min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
            column(4, br(),
-                  sliderInput("CTI_range", "Remove CTI\'s Outside This Range", min = .5, max = 1.29, value = c(.5, 1.29)))), br(), br())
+                  sliderInput("CTI_range", "Remove CTI\'s Outside This Range", min = .3, max = 1.29, value = c(.3, 1.29)))), br(), br())
 
 
 server <- function(input, output, session) {
@@ -62,9 +62,12 @@ server <- function(input, output, session) {
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter, Acc_postfilter, CatchAcc)
   
   observe({
-    pcpts <- if (input$dset == 'Pilot') {
-      if(input$ext_objects == 2) 301:324 else 401:427
-    } else {if(input$ext_objects == 2) 501:530 else 601:630}
+  pcpts <- if (input$dset == 'Experimental') {
+    blocksize <- 54
+    if(ext_objects == 2) 301:324 else 401:427
+  } else {
+    blocksize <- 80
+    if(ext_objects == 2) 501:530 else 601:630}
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     
@@ -91,7 +94,7 @@ server <- function(input, output, session) {
         filter(between(Acc_prefilter, input$pre_range[1], input$pre_range[2],   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
                        incbounds = TRUE),                       
                between(CTI,  min(input$CTI_range), max(input$CTI_range))) %>%
-        mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
+        mutate(block = RoundTo(Trial, blocksize, ceiling) / blocksize,                          # Creates column indicating trial's block
                RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
                            ButtonPressTime - lilsquareStartTime, NA),
                Stim_Sides = as.character(
@@ -154,7 +157,7 @@ server <- function(input, output, session) {
       pre_pad <- length(pcpts) * (length(unique(cmbd_w$CTI))) * y
       x %>%
         group_by(participant) %>%
-        mutate_at(vars(locations), list(~ case_when("Detrending" %in% input$trends ~ . - polyval(polyfit(CTI, ., 2), CTI), TRUE ~ .))) %>%
+        mutate_at(vars(locations), list(~case_when("Detrending" %in% input$trends ~ . - polyval(polyfit(CTI, ., 2), CTI), TRUE ~ .))) %>%
         mutate_at(vars(locations), list(~ case_when("Demeaning" %in% input$trends ~ . - mean(.), TRUE ~ .))) %>%
         mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%
         ungroup() %>%
@@ -168,7 +171,7 @@ server <- function(input, output, session) {
                                            ceiling) / ((n() - pre_pad) / y))) %>%
         group_by(participant, samp_shuff) %>%
         mutate_at(vars(locations), list(~Mod(sqrt(2/n()) * fft(.))^2)) %>%
-        mutate(Hz = round((row_number() - 1) / (n() * input$samp_per),2)) %>%
+        mutate(Hz = round((row_number() - 1) / (n() * input$samp_per), 2)) %>%
         ungroup() %>%
         select(-CTI)
     }
