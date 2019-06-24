@@ -1,61 +1,60 @@
-# if (!require(devtools)) install.packages('devtools')
-# if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
-# smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "purrr", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny"))
-
-library(utils); library(tidyr); library(dplyr); library(ggplot2); library(DescTools); library(bspec); library(pracma); library(gridExtra); library(data.table); library(tables); library(zoo); library(parallel); library(scales); library(lazyeval); library(stats); library(gdata); library(viridis); library(gginnards); library(shiny); library(shinyWidgets)
+if (!require(devtools)) install.packages("devtools")
+if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
+smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "purrr", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny", "shinyWidgets"))
 
 ui <- fluidPage(
   title = "Theta Oscillations Analysis",
-  plotOutput('mygraph',  height = 800, width = 1350),
+  plotOutput("mygraph",  height = 800, width = 1350),
   hr(),       
   fluidRow(class = "text-center", 
-           column(4, h3( 'Graph Choice and Task'), offset = 3)), br(), br(),
+           column(4, h3( "Data Set, Task, and Graph Choice"), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
-           column(6, offset = .3, radioGroupButtons('display', choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary")),
-           column(3, offset = .4, radioGroupButtons('ext_objects', choices = c("2-object Task", "3-object Task"), status = "primary"))
+           column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Experimental", status = "primary")),
+           column(5, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
+           column(4, radioGroupButtons("display", choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary"))
            ),
   br(), br(), br(), br(), 
   fluidRow(class = "text-center", 
-           column(4, h3( 'Quantification and Statistical Analyses'), offset = 3)), br(), br(),
+           column(4, h3( "Quantification and Statistical Analyses"), offset = 3)), br(), br(),
   fluidRow(column(4, br(),
-                  switchInput('iso_sides', "Separate Hemifields", labelWidth = 150), br(),
-                  switchInput('sbtr', "Analyze Invalid - Valid", labelWidth = 150), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
-                  numericInput('samp_per', 'Sampling Period', min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(1 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
-                  numericInput('clumps', 'Neighbors to average at each CTI', min = 0, max = 14, value = 2, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
+                  switchInput("iso_sides", "Separate Hemifields", labelWidth = 150), br(),
+                  switchInput("sbtr", "Analyze Invalid - Valid", labelWidth = 150), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
+                  numericInput("samp_per", "Sampling Period", min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(1 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
+                  numericInput("clumps", "Neighbors to average at each CTI", min = 0, max = 14, value = 2, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
                   ),
             column(3,
-                  radioGroupButtons('dep_var', 'Dependent Variable', c('Accuracy', 'Response Time'), selected = 'Accuracy', status = 'primary'), br(),
-                  numericInput('pval', 'P-value', max = .99, value = .05), helpText('The p-value to use for drawing the significance cutoff on the graphs'), br(),
-                  numericInput('shuff', 'Surrogate Shuffles for Null Hypothesis', min = 1, max = 10000, value = 50, step = 1), helpText("NOTE: increasing this number slows down the run time")
+                  radioGroupButtons("dep_var", "Dependent Variable", c("Accuracy", "Response Time"), selected = "Accuracy", status = "primary"), br(),
+                  numericInput("pval", "P-value", max = .99, value = .025), helpText("The p-value to use for drawing the significance cutoff on the graphs"), br(),
+                  numericInput("shuff", "Surrogate Shuffles for Null Hypothesis", min = 1, max = 10000, value = 50, step = 1), helpText("NOTE: increasing this number slows down the run time")
             ),
            column(5, br(),
-                  checkboxGroupButtons('trends', choices = c("Detrending", "Demeaning"), selected = c("Detrending", "Demeaning"), status = 'primary'), br(),
-                  radioGroupButtons('smooth_method', 'Smoothing Individuals\' Time-Series', c("GLM", "GAM", "Loess", "LM"), selected = "Loess", status = "primary"), br(),
-                  radioGroupButtons('win_func', 'Windowing Function', c("Cosine", "Hamming", "Hann", "Kaiser", "Square", "Triangle", "Tukey", "Welch"), selected = "Tukey", status = "primary"), br(),
-                  numericInput('xaxisvals', 'Max Hz Displayed', min = 1, value = 10), br(),
-                  numericInput('duration', 'Duration (Seconds) Analyzed Including Padding', min = .8, max = 10, value = 1, step = .001)
+                  checkboxGroupButtons("trends", choices = c("Detrending", "Demeaning"), selected = c("Detrending", "Demeaning"), status = "primary"), br(),
+                  radioGroupButtons("smooth_method", "Smoothing Individuals\" Time-Series", c("GLM", "GAM", "Loess", "LM"), selected = "Loess", status = "primary"), br(),
+                  radioGroupButtons("win_func", "Windowing Function", c("Cosine", "Hamming", "Hann", "Kaiser", "Square", "Triangle", "Tukey", "Welch"), selected = "Tukey", status = "primary"), br(),
+                  numericInput("xaxisvals", "Max Hz Displayed", min = 1, value = 15), br(),
+                  numericInput("duration", "Duration (Seconds) Analyzed Including Padding", min = .8, max = 10, value = 1, step = .001)
            )),
   fluidRow(class = "text-center", 
-          column(4, br(), br(), h3( 'Filtering Participants'), offset = 3)), br(), br(),
+          column(4, br(), br(), h3( "Filtering Participants"), offset = 3)), br(), br(),
   fluidRow(column(4, br(),
-      switchInput('attn_filter', 'Attention Filter', labelWidth = 100), helpText("Remove participants who reported either dozing off or not fully concentrating on multiple blocks"), br(),
-      numericInput('catch_floor', 'Catch-Trial Accuracy Floor', min = 0, max = 1, value = .85), helpText("Filter out participants whose filtered data is outside of the selected range")
+      switchInput("attn_filter", "Attention Filter", labelWidth = 100), helpText("Remove participants who reported either dozing off or not fully concentrating on multiple blocks"), br(),
+      numericInput("catch_floor", "Catch-Trial Accuracy Floor", min = 0, max = 1, value = .85), helpText("Filter out participants whose filtered data is outside of the selected range")
   ),
   column(4, br(),
-         numericInput('side_bias', 'Side Bias Ceiling', min = .01, max = .99, value = .3), helpText("Filter out participants whose hit rate at one visual field - another visual field is > `side_bias`"), br()
+         numericInput("side_bias", "Side Bias Ceiling", min = .01, max = .99, value = .2), helpText("Filter out participants whose hit rate at one visual field - another visual field is > `side_bias`"), br()
   ),
   column(4, br(),
-         sliderInput('pre_range', 'Pre-Filtered Accuracy Cutoffs', min = 0, max = 1, value = c(.45, .75)), helpText("Remove participants whose unfiltered accuracy is outside this range"), br(),
-         sliderInput('post_range', 'Post-Filtered Accuracy Cutoffs', min = 0, max = 1, value = c(.45, .75)), helpText("Remove participants whose filtered data is outside of the selected range")
+         sliderInput("pre_range", "Pre-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .75)), helpText("Remove participants whose unfiltered accuracy is outside this range"), br(),
+         sliderInput("post_range", "Post-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .75)), helpText("Remove participants whose filtered data is outside of the selected range")
   )),
   fluidRow(class = "text-center", br(),
-           column(4, h3( 'Filtering Trials'), offset = 3)), br(), br(),
+           column(4, h3( "Filtering Trials"), offset = 3)), br(), br(),
   fluidRow(column(4, br(),
-                   numericInput('block_floor', 'Block Accuracy Floor', min = 0, max = 1, value = .40), helpText("Interpolate over trials if the average hit rate in that block, every 48 trials, was below this value")),
+                   numericInput("block_floor", "Block Accuracy Floor", min = 0, max = 1, value = .40), helpText("Interpolate over trials if the average hit rate in that block, every 48 trials, was below this value")),
             column(4,
-                   sliderInput('miniblock_range', 'Mini-Block Accuracy Cutoffs', min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
+                   sliderInput("miniblock_range", "Mini-Block Accuracy Cutoffs", min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
            column(4, br(),
-                  sliderInput('CTI_range', 'Remove CTI\'s Outside This Range', min = .5, max = 1.29, value = c(.5, 1.29)))), br(), br())
+                  sliderInput("CTI_range", "Remove CTI\'s Outside This Range", min = .5, max = 1.29, value = c(.5, 1.29)))), br(), br())
 
 
 server <- function(input, output, session) {
@@ -63,7 +62,9 @@ server <- function(input, output, session) {
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter, Acc_postfilter, CatchAcc)
   
   observe({
-    pcpts <- if(input$ext_objects == "2-object Task") 301:324 else 401:427
+    pcpts <- if (input$dset == 'pilot') {
+      if(input$ext_objects == 2) 301:324 else 401:427
+    } else {if(input$ext_objects == 2) 501:530 else 601:630}
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     
@@ -82,12 +83,13 @@ server <- function(input, output, session) {
         left_join(dem_df, by = c("participant" = "SubjID")) %>%
         filter(CatchAcc >= input$catch_floor,                                   # Filters out participants whose catch accuracy is below desired threshold
                grepl(ifelse(input$attn_filter, "fully alert" , ""), Q9),
-               Opacity > 0,
-               Side_Diff <= input$side_bias) %>%
+               Side_Diff <= input$side_bias,
+               Opacity > 0) %>%
         mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_floor`, unlike `Acc_postfilter`
                CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
                                      1 / 60), input$samp_per)) %>% 
-        filter(between(Acc_prefilter, input$pre_range[1], input$pre_range[2], incbounds = TRUE),                       # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
+        filter(between(Acc_prefilter, input$pre_range[1], input$pre_range[2],   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
+                       incbounds = TRUE),                       
                between(CTI,  min(input$CTI_range), max(input$CTI_range))) %>%
         mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
                RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
@@ -128,7 +130,7 @@ server <- function(input, output, session) {
     locations <- unique(cmbd$Stim_Sides)                                   # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
     pcpts <- unique(cmbd$participant)                                       # Creates vector of remaining participant numbers after `pcpts_combine` filtering
     cmbd_w <- cmbd %>%
-      pivot_wide(CTI:CatchAcc, Stim_Sides, !!dep_var_abbr) %>%
+      pivot_wider(CTI:CatchAcc, Stim_Sides, values_from = !!dep_var_abbr) %>%
       arrange(Acc_prefilter, participant, CTI) %>%
       group_by(participant) %>%
       mutate_at(vars(locations), list(~na.approx(., na.rm = FALSE, rule = 2)))
@@ -148,22 +150,22 @@ server <- function(input, output, session) {
     }
     
     # Transforms from Time to Frequency Domain
-    amplitude <- function(x, z){
-      pre_pad <- length(pcpts) * (length(unique(cmbd_w$CTI))) * z
+    amplitude <- function(x, y){
+      pre_pad <- length(pcpts) * (length(unique(cmbd_w$CTI))) * y
       x %>%
         group_by(participant) %>%
         mutate_at(vars(locations), list(~ case_when("Detrending" %in% input$trends ~ . - polyval(polyfit(CTI, ., 2), CTI), TRUE ~ .))) %>%
         mutate_at(vars(locations), list(~ case_when("Demeaning" %in% input$trends ~ . - mean(.), TRUE ~ .))) %>%
         mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%
         ungroup() %>%
-        add_row(participant = rep(pcpts, times = z * (ceiling((input$duration - diff(range(cmbd_w$CTI)))/input$samp_per)))) %>%
-        head(-length(pcpts) * z) %>%
+        add_row(participant = rep(pcpts, y * (ceiling((input$duration - diff(range(cmbd_w$CTI)))/input$samp_per)))) %>%
+        head(-length(pcpts) * y) %>%
         mutate_at(vars(locations), list(~coalesce(., 0))) %>%
         mutate(samp_shuff = ifelse(row_number() <= pre_pad, 
-                                   RoundTo(row_number(), pre_pad / z,
-                                           ceiling) / (pre_pad / z), 
-                                   RoundTo(row_number() - pre_pad, (n() - pre_pad) / (z),
-                                           ceiling) / ((n() - pre_pad) /  z))) %>%
+                                   RoundTo(row_number(), pre_pad / y,
+                                           ceiling) / (pre_pad / y), 
+                                   RoundTo(row_number() - pre_pad, (n() - pre_pad) / (y),
+                                           ceiling) / ((n() - pre_pad) / y))) %>%
         group_by(participant, samp_shuff) %>%
         mutate_at(vars(locations), list(~Mod(sqrt(2/n()) * fft(.))^2)) %>%
         mutate(Hz = round((row_number() - 1) / (n() * input$samp_per),2)) %>%
@@ -205,8 +207,8 @@ server <- function(input, output, session) {
         theme_bw() +
         scale_color_viridis_d(option = "C",
                               end = viridis_cols,
-                              labels = sapply(locations, function(x) gsub("_", " ", x),
-                                              USE.NAMES = FALSE, simplify = TRUE)) +
+                              labels = sapply(locations, simplify = TRUE, function(x) gsub("_", " ", x),
+                                              USE.NAMES = FALSE)) +
         scale_fill_viridis_d(option = "C",
                              end = viridis_cols) +
         guides(colour = guide_legend(reverse = TRUE), fill = FALSE)
@@ -217,7 +219,7 @@ server <- function(input, output, session) {
         theme(plot.title = element_text(hjust = 0.5),
               plot.subtitle = element_text(hjust = 0.5)) +
         facet_wrap(~factor(participant, levels = pcpts),
-                   ncol = RoundTo(length(pcpts) / 4, 1, ceiling),  scales = 'free_x')                                   # `free` means the y_axis isn't fixed from participant to participant
+                   ncol = RoundTo(length(pcpts) / 4, 1, ceiling),  scales = "free_x")                                   # `free` means the y_axis isn't fixed from participant to participant
     }
     cmbd_g <- function(y, x) {
       graph(y, x) + geom_line(size = 1.5) +
@@ -240,7 +242,7 @@ server <- function(input, output, session) {
         ungroup() %>%
         drop_na() %>%
         mutate_at(vars(!!!tail(grouping_cnsts, -1)),
-                  list(~paste(quo_name(quo(.)), "=", percent(.)))) %>%
+                  funs(paste(quo_name(quo(.)), "=", percent(.)))) %>%
         unite(lab, !!!tail(grouping_cnsts, -1), sep = "\n", remove = FALSE)
 
       # Produces right half of final graph
@@ -268,7 +270,7 @@ server <- function(input, output, session) {
       
       set.seed(123)
       
-      # Produces 'shuff' # of null hypothesis permutations
+      # Produces `shuff` # of null hypothesis permutations
       shuffle <- function(x){
         cmbd_w %>%
           group_by(participant) %>%
