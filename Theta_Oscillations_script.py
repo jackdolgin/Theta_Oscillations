@@ -104,7 +104,7 @@ shapecolor = [.05, .05, .05]
 crosscolor = [1, 1, 1]
 lilcolor = [-.35, -.35, -.35]
 
-opacity = .14
+opacity = .11
 
 
 ##---------------------------SOUND NOISE & LOUDNESS---------------------------##

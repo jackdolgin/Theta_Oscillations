@@ -62,12 +62,12 @@ server <- function(input, output, session) {
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter, Acc_postfilter, CatchAcc)
   
   observe({
-  pcpts <- if (input$dset == 'Pilot') {
+  pcpts <- if (input$dset == "Pilot") {
     blocksize <- 54
-    if(ext_objects == 2) 301:324 else 401:427
+    if(input$ext_objects == "2-object Task") 301:324 else 401:427
   } else {
     blocksize <- 80
-    if(ext_objects == 2) 501:530 else 601:630}
+    if(input$ext_objects == "2-object Task") 501:530 else 601:630}
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     
