@@ -62,7 +62,7 @@ server <- function(input, output, session) {
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter, Acc_postfilter, CatchAcc)
   
   observe({
-  pcpts <- if (input$dset == 'Experimental') {
+  pcpts <- if (input$dset == 'Pilot') {
     blocksize <- 54
     if(ext_objects == 2) 301:324 else 401:427
   } else {
