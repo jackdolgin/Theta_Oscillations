@@ -177,7 +177,7 @@ inst1b = visual.TextStim(
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst1c = visual.TextStim(
-    win = win, text = "Then on some trials you will see a little square inside one of the " + num_to_word + " squares, and on other trials you will not see any little square square. " + str(int(validity * 100)) + "% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.",
+    win = win, text = "Then on some trials you will see a little square inside one of the " + num_to_word + " squares, and on other trials you will not see any little square. " + str(int(validity * 100)) + "% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.",
     units='deg', pos = (-8, 0), height = 1, wrapWidth = 18)
 
 inst2 = visual.TextStim(
@@ -193,7 +193,7 @@ inst45 = visual.TextStim(
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst5 = visual.TextStim(
-    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 35 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
+    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 40 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
     units = 'deg', height = 1, wrapWidth = 20)
 
 inst6 = visual.TextStim(

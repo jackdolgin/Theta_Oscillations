@@ -10,14 +10,17 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
                           clumps, dep_var, pval, shuff, trends, smooth_method,
                           win_func, xaxisvals, duration, attn_filter,
                           catch_floor, side_bias, pre_range, post_range,
-                          block_floor, miniblock_range, CTI_range){
+                          block_range, miniblock_range, CTI_range){
   
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means
                          Acc_postfilter, CatchAcc)                              # don't have to type them out every time we use them for grouping
   
   pcpts <- if (dset == 'Pilot') {
+    blocksize <- 54
     if(ext_objects == 2) 301:324 else 401:427
-    } else {if(ext_objects == 2) 501:530 else 601:630}
+  } else {
+    blocksize <- 80
+    if(ext_objects == 2) 501:530 else 601:630}
   
   dep_var_abbr <- as.name(ifelse(dep_var == "Accuracy", "Acc", "RT"))           # Converts character to name/symbol so we can refer to it as a column using tidy
   
@@ -39,13 +42,13 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
              grepl(ifelse(attn_filter, "fully alert" , ""), Q9),                #                          reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
              Side_Diff <= side_bias,                                            #                                hit rate at one visual field - another visual field is > `side_bias`
              Opacity > 0) %>%                                                   #        catch trials             
-      mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_floor`, unlike `Acc_postfilter`
+      mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
              CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
                                    1 / 60), samp_per)) %>% 
       filter(between(Acc_prefilter, pre_range[1], pre_range[2],                 # Prunes participants whose non-catch, pre-block-filtering accuracy is outside of desired range
                      incbounds = TRUE),
              between(CTI, min(CTI_range), max(CTI_range))) %>%
-      mutate(block = RoundTo(Trial, 54, ceiling) / 54,                          # Creates column indicating trial's block
+      mutate(block = RoundTo(Trial, blocksize, ceiling) / blocksize,            # Creates column indicating trial's block
              RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
                          ButtonPressTime - lilsquareStartTime, NA),
              Stim_Sides = as.character(
@@ -64,11 +67,12 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
       mutate(miniblock_avg = mean(Acc)) %>%
       ungroup() %>%
       mutate_at(vars(Acc, RT),
-                list(~ifelse(block_acc <= block_floor |                         # Changes `Acc` and `RT` column values to NA if trial's block accuracy < `block_floor`
+                list(~ifelse(!between(block_acc, block_range[1],                # Changes `Acc` and `RT` column values to NA if trial's
+                                      block_range[2]) |                         # block accuracy outside of `block_range`
                                !between(miniblock_avg, miniblock_range[1],      # or miniblock was not in the desired range
                                         miniblock_range[2]), NA, .))) %>%
       mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
-             Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered for `block_floor`, unlike `Acc_prefilter`
+             Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered for `block_range`, unlike `Acc_prefilter`
       filter(between(Acc_postfilter, post_range[1], post_range[2])) %>%         # Prunes participants whose non-catch, post-block-filtering accuracy is outside of desired range 
       group_by(CTI, Stim_Sides, !!!grouping_cnsts) %>%
       summarise_at(vars(Acc, RT), list(~mean(., na.rm = TRUE))) %>%             # Overwrites `Acc` and `RT` columns according to mean of each combination of `CTI` and `Stim_Sides`
@@ -113,9 +117,9 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
       group_by(participant) %>%
       mutate_at(vars(locations),
                 list(~ case_when("Detrending" %in% trends ~
-                                 . - polyval(polyfit(CTI, ., 2), CTI),
+                                   . - polyval(polyfit(CTI, ., 2), CTI),
                                  TRUE ~ .))) %>%
-      mutate_at(vars(locations), list(~ case_when("Demeaning" %in% trends ~
+      mutate_at(vars(locations), list(~case_when("Demeaning" %in% trends ~
                                                     . - mean(.), TRUE ~ .))) %>%
       mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%
       ungroup() %>%
@@ -196,7 +200,8 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
   }
   
   sv_cmbd_g <- function(x) { x %>%
-      ggsave(filename = file.path("plots", paste(display, ext_objects, "objects.pdf")),
+      ggsave(filename = file.path("plots", paste(display, dep_var, ext_objects,
+                                                 "objects.pdf")),
              width = xaxisvals)}
   
   # Conditionally returns data frame of prelim participant or post-FFT data,
@@ -322,7 +327,7 @@ main_function(display = "FFT Across Participants",                              
               ext_objects = 2,                                                  # `2` corresponds to the two-object task, `3` to the three-object task
               iso_sides = FALSE,                                                # Either `FALSE` or `TRUE`, which groups by not only valid and invalid but also by the side of the screen for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`, `Left Invalid`)
               sbtr = FALSE,                                                     # Either `FALSE` or `TRUE`, which subtracts the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently
-              samp_per = 1 / 60,                                                # Spacing between CTI intevals (in seconds); the data was originally sampled at 1 / 60, but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the `clump` variable groups neighbors but doesn't combine them, keeping the same total number of bins)
+              samp_per = round(1 / 60, 4),                                      # Spacing between CTI intevals (in seconds); the data was originally sampled at 1 / 60, but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the `clump` variable groups neighbors but doesn't combine them, keeping the same total number of bins)
               clumps = 2,                                                       # Number of points to average at each CTI; `1` means this function does nothing, `3` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...
               dep_var = "Accuracy",                                             # Either `Accuracy`or `Response Time`
               pval = .025,                                                      # The p-value to use for drawing the significance cutoff on the graphs
@@ -337,7 +342,7 @@ main_function(display = "FFT Across Participants",                              
               side_bias = .2,                                                   #                     whose hit rate at one visual field - another visual field is > `side_bias`
               pre_range = c(.45, .75),                                          #                           unfiltered/scrutinized data is outside of the selected range
               post_range = c(.45, .75),                                         #                           filtered data is outside of the selected range
-              block_floor = .40,                                                # Interpolates over trials if the average hit rate in that block, every 48 trials, was below this value
+              block_range = c(.40, .80),                                        # Interpolates over trials if the average hit rate in that block, every 48 trials, is outside of the select range
               miniblock_range = c(.40, .80),                                    #                                                          mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range
               CTI_range = c(.3, 1.29)                                           # Filters trials outside this range of CTI bins
 )
