@@ -5,6 +5,8 @@ if (!require(devtools)) install.packages("devtools")
 if (!require(scienceverse)) devtools::install_github("scienceverse/scienceverse")
 library("scienceverse")
 
+source("FFT_analysis.R")
+
 theta_1_2_study <- study(
   "Rhythms in Internal and External Attentional Focus, Exps 1 + 2",
   author = c("Jack Dolgin", "Ian C. Fiebelkorn", "Tobias Egner")) %>%
@@ -16,7 +18,7 @@ theta_1_2_study <- study(
                  id = "h2") %>%
   
   add_hypothesis("In the 3-object task, detection rates at invalidly-cued locations will peak at a lower frequency—2 or 3 Hz.—than in the 2-object task, and this peak will reach statistical significance.",
-  id = "h3") %>%
+                 id = "h3") %>%
   
   add_hypothesis("In the 3-object task, response times at invalidly-cued locations will peak at a lower frequency—2 or 3 Hz.—than in the 2-object task, and this peak will reach statistical significance.",
                  id = "h4") %>%
@@ -138,5 +140,5 @@ theta_1_2_study <- study(
     id = "main_analysis_h4") %>%
   
   study_analyze()
-  
+
 study_save(theta_1_2_study, "pre_data_theta_1_2_study.json")

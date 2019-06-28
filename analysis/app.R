@@ -1,6 +1,8 @@
-if (!require(devtools)) install.packages("devtools")
-if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
-smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "purrr", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny", "shinyWidgets"))
+# if (!require(devtools)) install.packages('devtools')
+# if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
+# smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "purrr", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny", "shinyWidgets"))
+
+library(utils); library(tidyr); library(dplyr); library(ggplot2); library(DescTools); library(bspec); library(pracma); library(gridExtra); library(data.table); library(tables); library(zoo); library(parallel); library(scales); library(lazyeval); library(stats); library(gdata); library(viridis); library(gginnards); library(shiny); library(shinyWidgets)
 
 ui <- fluidPage(
   title = "Theta Oscillations Analysis",
@@ -9,13 +11,13 @@ ui <- fluidPage(
   fluidRow(class = "text-center",
            column(4, h3( "Data Set, Task, and Graph Choice"), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
-           column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Pilot", status = "primary")),
+           column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Experimental", status = "primary")),
            column(5, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
            column(4, radioGroupButtons("display", choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary"))
            ),
   br(), br(), br(), br(), 
   fluidRow(class = "text-center", 
-           column(4, h3( "Quantification and Statistical Analyses"), offset = 3)), br(), br(),
+           column(4, h3("Quantification and Statistical Analyses"), offset = 3)), br(), br(),
   fluidRow(column(4, br(),
                   switchInput("iso_sides", "Separate Hemifields", labelWidth = 150), br(),
                   switchInput("sbtr", "Analyze Invalid - Valid", labelWidth = 150), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
@@ -50,7 +52,7 @@ ui <- fluidPage(
   fluidRow(class = "text-center", br(),
            column(4, h3( "Filtering Trials"), offset = 3)), br(), br(),
   fluidRow(column(4, br(),
-                   numericInput("block_floor", "Block Accuracy Floor", min = 0, max = 1, value = .40), helpText("Interpolate over trials if the average hit rate in that block, every 48 trials, was below this value")),
+                  sliderInput("block_range", "Block Accuracy Range", min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that block, every 48 trials, was below this value")),
             column(4,
                    sliderInput("miniblock_range", "Mini-Block Accuracy Cutoffs", min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
            column(4, br(),
@@ -67,7 +69,7 @@ server <- function(input, output, session) {
     if(input$ext_objects == "2-object Task") 301:324 else 401:427
   } else {
     blocksize <- 80
-    if(input$ext_objects == "2-object Task") 501:530 else 601:630}
+    if(input$ext_objects == "2-object Task") c(501:530 else 601:630}
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     
@@ -85,10 +87,10 @@ server <- function(input, output, session) {
         mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
         left_join(dem_df, by = c("participant" = "SubjID")) %>%
         filter(CatchAcc >= input$catch_floor,                                   # Filters out participants whose catch accuracy is below desired threshold
-               grepl(ifelse(input$attn_filter, "fully alert" , ""), Q9),
+               # grepl(ifelse(input$attn_filter, "fully alert" , ""), Q9),
                Side_Diff <= input$side_bias,
                Opacity > 0) %>%
-        mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_floor`, unlike `Acc_postfilter`
+        mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
                CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
                                      1 / 60), input$samp_per)) %>% 
         filter(between(Acc_prefilter, input$pre_range[1], input$pre_range[2],   # Filters out participants whose non-catch, pre-block-filtering accuracy is outside of desired range
@@ -112,10 +114,12 @@ server <- function(input, output, session) {
         mutate(miniblock_avg = mean(Acc)) %>%
         ungroup() %>%
         mutate_at(vars(Acc, RT),
-                  list(~ifelse(block_acc <= input$block_floor | !between(miniblock_avg,  # Changes `Acc` and `RT` column values to NA if trial's block accuracy < `block_floor`
-                                                                  input$miniblock_range[1], input$miniblock_range[2]), NA, .))) %>%    # or miniblock was not in the desired range
+                  list(~ifelse(!between(block_acc, input$block_range[1],                # Changes `Acc` and `RT` column values to NA if trial's
+                                        input$block_range[2]) |                         # block accuracy outside of `block_range`
+                                 !between(miniblock_avg, input$miniblock_range[1],      # or miniblock was not in the desired range
+                                          input$miniblock_range[2]), NA, .))) %>%
         mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
-               Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered for `block_floor`, unlike `Acc_prefilter`
+               Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered for `block_range`, unlike `Acc_prefilter`
         filter(between(Acc_postfilter, input$post_range[1], input$post_range[2])) %>%                # Filters out participants whose non-catch, post-block-filtering accuracy is outside of desired range
         group_by(CTI, Stim_Sides, !!!grouping_cnsts) %>%
         summarise_at(vars(Acc, RT), list(~mean(., na.rm = TRUE))) %>%              # Overwrites `Acc` and `RT` columns according to mean of each combination of `CTI` and `Stim_Sides`

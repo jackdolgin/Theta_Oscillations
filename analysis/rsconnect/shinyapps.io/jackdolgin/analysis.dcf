@@ -1,0 +1,12 @@
+name: analysis
+title: analysis
+username:
+account: jackdolgin
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 999856
+bundleId: 2180347
+url: https://jackdolgin.shinyapps.io/analysis/
+when: 1561568703.31427
+asMultiple: FALSE
+asStatic: FALSE
