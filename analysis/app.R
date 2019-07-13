@@ -56,7 +56,7 @@ ui <- fluidPage(
             column(4,
                    sliderInput("miniblock_range", "Mini-Block Accuracy Cutoffs", min = 0, max = 1, value = c(.40, .80)), helpText("Interpolate over trials if the average hit rate in that mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range")),
            column(4, br(),
-                  sliderInput("CTI_range", "Remove CTI\'s Outside This Range", min = .3, max = 1.29, value = c(.3, 1.29)))), br(), br())
+                  sliderInput("CTI_range", "Remove CTI\'s Outside This Range", min = .3, max = 1.29, value = c(.3, 1.09)))), br(), br())
 
 
 server <- function(input, output, session) {
@@ -69,7 +69,7 @@ server <- function(input, output, session) {
     if(input$ext_objects == "2-object Task") 301:324 else 401:427
   } else {
     blocksize <- 80
-    if(input$ext_objects == "2-object Task") c(501:530 else 601:630}
+    if(input$ext_objects == "2-object Task") c(501:522, 524:534) else c(601:631)}
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     
@@ -87,7 +87,7 @@ server <- function(input, output, session) {
         mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
         left_join(dem_df, by = c("participant" = "SubjID")) %>%
         filter(CatchAcc >= input$catch_floor,                                   # Filters out participants whose catch accuracy is below desired threshold
-               # grepl(ifelse(input$attn_filter, "fully alert" , ""), Q9),
+               grepl(ifelse(input$attn_filter, "task" , ""), Q9),
                Side_Diff <= input$side_bias,
                Opacity > 0) %>%
         mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`

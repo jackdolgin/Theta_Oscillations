@@ -20,7 +20,7 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
     if(ext_objects == 2) 301:324 else 401:427
   } else {
     blocksize <- 80
-    if(ext_objects == 2) 501:530 else 601:630}
+    if(ext_objects == 2) c(501:522, 524:534) else 601:631}
   
   dep_var_abbr <- as.name(ifelse(dep_var == "Accuracy", "Acc", "RT"))           # Converts character to name/symbol so we can refer to it as a column using tidy
   
@@ -39,8 +39,8 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
       mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
       left_join(dem_df, by = c("participant" = "SubjID")) %>%
       filter(CatchAcc >= catch_floor,                                           # Prunes participants whose catch accuracy is below desired threshold
-             grepl(ifelse(attn_filter, "fully alert" , ""), Q9),                #                          reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
-             Side_Diff <= side_bias,                                            #                                hit rate at one visual field - another visual field is > `side_bias`
+             grepl(ifelse(attn_filter, "task" , ""), Q9),                       #                     reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
+             Side_Diff <= side_bias,                                            #                     whose hit rate at one visual field - another visual field is > `side_bias`
              Opacity > 0) %>%                                                   #        catch trials             
       mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
              CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
@@ -344,5 +344,5 @@ main_function(display = "FFT Across Participants",                              
               post_range = c(.45, .75),                                         #                           filtered data is outside of the selected range
               block_range = c(.40, .80),                                        # Interpolates over trials if the average hit rate in that block, every 48 trials, is outside of the select range
               miniblock_range = c(.40, .80),                                    #                                                          mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range
-              CTI_range = c(.3, 1.29)                                           # Filters trials outside this range of CTI bins
+              CTI_range = c(.3, 1.09)                                           # Filters trials outside this range of CTI bins
 )
