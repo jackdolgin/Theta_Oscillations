@@ -45,11 +45,6 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 all_keys = ["l","L","a","A", "b", "B"]
 
 task = int(expInfo['session'])
-if task == 2:
-    num_to_word = "two"
-else:
-    num_to_word = "three"
-
 
 # Setup the Window
 win = visual.Window(
@@ -114,12 +109,28 @@ stagger = to_frames(.0167)
 blockdelay = to_frames(1.5) # creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
 lilduration = to_frames(.0333)
 bulge_duration = to_frames(.0333)
-square_start_min = to_frames(1)
-square_start_max = to_frames(1.2)
+trial_start_min = to_frames(1)
+trial_start_max = to_frames(1.2)
 bulge_start_min = to_frames(.4)
 bulge_start_max = to_frames(.8)
 lilafterbulge_constant = to_frames(.3)
 squareafterlil = to_frames(1)
+wmarith_pause = to_frames(.5)
+wmarith_total = wmarith_pause + to_frames(1.5)
+
+def while_start():
+    global t, frameN, key
+    if event.getKeys(keyList = ["escape"]):
+        core.quit()
+    # get current time
+    t = trialClock.getTime()
+    frameN += 1  # number of completed frames (so 0 is the first frame)
+    key = event.getKeys(keyList = all_keys)
+
+def for_start():
+    global frameN, continueRoutine
+    frameN = -1
+    continueRoutine = True
 
 
 ##--------------------------------CREATE TIMERS-------------------------------##
@@ -142,11 +153,16 @@ liltrials = intervals * reps
 percent_catch = .1      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
 
 catchtrials = round_to_multiple((percent_catch * liltrials) / (1 - percent_catch), 6) # 6 is because of a 2x3 during catch trials- invalid locations x absent locations
-print catchtrials
 trials = liltrials + catchtrials
 trialsperblock = trials / blocksreal
 
 validity = .7
+extra_valids = int(validity * liltrials - ((reps - (6)) * intervals)) / 3 # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps=
+extra_invalids = intervals - extra_valids
+
+wmarith_freq = .2
+wmarith_trials = int(trials * wmarith_freq)
+no_wmarith_trials = trials - wmarith_trials
 
 ptrials = 10
 qtrials = 30
@@ -156,9 +172,6 @@ acc_aim = .65
 
 
 ##---------------------------TRIAL MATRIX & RANDOMIZATION---------------------##
-
-extra_valids = int(validity * liltrials - ((reps - (6)) * intervals)) / 3 # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps=
-extra_invalids = intervals - extra_valids
 
 def most_inv(z, r):
     my_dict = d[z + "_list"] # dictionary taking either an `x` or `y` input spits out the list of possible x or y coordinates
@@ -203,9 +216,6 @@ bulge_y = np.concatenate([peat_intervals(d_y, 2), most_inv("y", "mixed_inv"), pe
 target_y = np.concatenate([peat_intervals(list(np.repeat(d_y, 2)) + d_y + d_y, 1), peat_catch(d_y, 1)])
 
 absent_list = np.concatenate([most_inv("o", "val"), most_inv("o", "mixed_inv"), peat_catch(d_o[::-1], 2)])
-print "len(most_inv(o, val)) = " + str(len(most_inv("o", "val")))
-print "len(most_inv(o, mixed_inv)) = " + str(len(most_inv("o", "mixed_inv")))
-print "len(peat_catch(o, 2)) = " + str(len(peat_catch(d_o, 2)))
 intervals_range = list(range(0, intervals * stagger, stagger))
 lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each block of 48; so all 48 appear before the next rep, but the order for each 48 is random from rep to rep
 
@@ -220,6 +230,47 @@ def my_randomize():
     return np.asarray([random.randrange(lilsize - square_size, square_size - lilsize) / 2 for i in list(range(trials))]) # randomize either x or y coordinates for target within the square (gets added to target_y for that trial)
 
 
+##---------------------------WM/ARITHMETIC SETUP------------------------------##
+
+sumlist = []
+corrlist = []
+def createsums(s):
+    numone = random.randrange(1, 9)
+    numtwo = random.randrange(1, 9)
+    return sumlist.append(str(numone) + " + " + str(numtwo) + " = " + str(numone + numtwo + s))
+
+inc_arith = [-2, -1, 1, 2]
+for i in inc_arith:
+    for j in range(int(trials / (2 * len(inc_arith)))):
+        createsums(i)
+        corrlist.append(False)
+
+for j in range(trials - len(sumlist)):
+    createsums(0)
+    corrlist.append(True)
+
+def check_correct(x):
+    global acc, soundp
+    if (x):
+        acc = 1
+        soundp = soundfiles[0]
+    else:
+        acc = 0
+        soundp = soundfiles[1]
+
+def wmarith_na(x):
+    if expmatrix[9][randomseq[trial]]:
+        return (globals()[x])
+    else:
+        return "NA"
+
+combined = list(zip(sumlist, corrlist))
+random.shuffle(combined)
+sumlist[:], corrlist[:] = zip(*combined)
+wmarith = wmarith_trials * [True] + no_wmarith_trials * [False]
+np.random.shuffle(wmarith)
+
+
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
 expmatrix = [target_x, # side of screen of lil
@@ -228,12 +279,12 @@ expmatrix = [target_x, # side of screen of lil
             my_randomize(), # randomize target's x value
             my_randomize(), # randomize target's y value
             [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-            lil_timing + catch_timing,
+            lil_timing + catch_timing, # CTI interval for each trial
             target_y, # y value of lil,
-            absent_list] # absent big square (unless task == 3)
-print expmatrix
-for i in expmatrix:
-    print len(i)
+            absent_list, # absent big square (unless task == 3)
+            wmarith, # whether wm/arithmetic present
+            sumlist, # arithmetic questions (if they're called)
+            corrlist] # whether the answer to the arithmetic question (if it's called) is correct
 
 #randomization sequence
 randomseq = list(range(int(trials)))
@@ -294,6 +345,41 @@ task_diagram_response = visual.ImageStim(
 
 ##-------------------------------INSTRUCTION SCREEN---------------------------##
 
+if task == 3:
+    num_to_word = "three"
+    absent_instructions = ""
+else:
+    num_to_word = "two"
+    absent_instructions =  " There are three possible locations for these big squares, and so one of the big squares will be \'absent\' per trial."
+if task == 4:
+    wm_arith_task = "memory"
+else:
+    wm_arith_task = "arithmetic"
+
+inst0 = visual.TextStim(
+    win = win, text = "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". These " + wm_arith_task + "trials will follow some of the visual attention trials, but there will always be at least one visual attention trial between " + wm_arith_task + " trials.",
+    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+
+inst01 = visual.TextStim(
+    win = win, text = "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross.",
+    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+
+inst02 = visual.TextStim(
+    win = win, text = "This study will begin with two sets of practice trials. On each practice trial, like each trial in the main experiment, you will see " + num_to_word + " big squares appear on the screen.",
+    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+
+inst04 = visual.TextStim(
+    win = win, text = "For example, one trial may begin with:",
+    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+
+inst05 = visual.TextStim(
+    win = win, text = "and the next with :",
+    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+
+inst06 = visual.TextStim(
+    win = win, text = "Once these " + num_to_word + " big squares appear, one of them will bulge shortly thereafter. This bulge is a cue for detecting a target.",
+    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+
 inst1 = visual.TextStim(
     win = win, text = "This study will begin with " + str(ptrials + qtrials) + " practice trials. On each practice trial, like each trial in the main experiment, you will see " + num_to_word + " big squares appear on the screen.\n\nPress space to continue.",
     units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
@@ -330,6 +416,27 @@ inst9 = visual.TextStim(
     win = win, text = "Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.",
     units = 'deg', height = 1, wrapWidth = 20)
 
+wmarith_probe = visual.TextStim(
+    win = win, text = "Filler question",
+    units = 'deg', height = 1, wrapWidth = 20)
+
+inst12 = 'Was the omitted square in the same location during the last two trials?\nPress \"T\" for True or \"F\" for False.'
+
+# inst01 = visual.TextStim(
+#     win = win, text = "This study features two tasks, a visual attention task and one that (tests recall / arithmetic). These (recall/ arithmetic) trials will follow some of the visual attention trials, but there will always be at least one visual attention trial between recall/arithmetic trials.",
+#     units = 'deg', height = 1, wrapWidth = 20)
+#
+# inst02 = visual.TextStim(
+#     win = win, text = "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross.",
+#     units = 'deg', height = 1, wrapWidth = 20)
+#
+# #inst1 #There are three possible locations for these big squares, and so one of the big squares will be `absent` per trial.
+#
+# # For example, one trial may begin with : and the next with :__
+#
+# # Once these two big squares appear, one of them will bulge shortly thereafter. This bulge is a cue for detecting a target.
+#
+# #
 
 
 
@@ -517,12 +624,10 @@ for rep in list(range(3)):
 
 
             for trial in trials:
+                for_start()
                 cross.setAutoDraw(True) # cross begins on screen; is located outside of while loop since it is on screen the entire trial
-                frameN = -1
-                continueRoutine = True
                 lenkeylist = 0
                 overalltime = globalClock.getTime()
-                routineTimer = core.Clock()
 
 
                 ##----------------------SET TARGET & OPACITY--------------------##
@@ -557,20 +662,14 @@ for rep in list(range(3)):
 
                 lil_side = expmatrix[0][randomseq[trial]] # right now is just -1s, 0s, and 1s
                 lil_height = expmatrix[7][randomseq[trial]]
-                print "lil_side = " + str(lil_side)
-                print "lil_height = " + str(lil_height)
-                print "lil_side * sides_x + expmatrix[3][randomseq[trial]] (aka lil x val)= " + str(lil_side * sides_x + expmatrix[3][randomseq[trial]])
-                print "lil_height + expmatrix[4][randomseq[trial]] (aka lil y val)= " + str(lil_height + expmatrix[4][randomseq[trial]])
                 lilsquare.setPos([lil_side * sides_x + expmatrix[3][randomseq[trial]], lil_height + expmatrix[4][randomseq[trial]]])
                 bulge_side = expmatrix[1][randomseq[trial]]
-                print "bulge_side * sides_x (aka  bulge x val)= " + str(bulge_side * sides_x)
-                print "expmatrix[2][randomseq[trial]] (aka bulge y val) = " + str(expmatrix[2][randomseq[trial]])
                 bulge.setPos([bulge_side * sides_x, expmatrix[2][randomseq[trial]]])
 
 
                 ##--------------SET START & DURATION OF STIMULI---------------##
 
-                square_start = random.randrange(square_start_min, square_start_max + 1)
+                square_start = random.randrange(trial_start_min, trial_start_max + 1)
                 bulge_start = square_start + random.randrange(bulge_start_min, bulge_start_max + 1)
                 bulge_end = bulge_start + bulge_duration
 
@@ -579,8 +678,6 @@ for rep in list(range(3)):
                 lilend = lilstart + lilduration
 
                 squareend = lilend + squareafterlil
-                square_duration = squareend - square_start
-                trial_duration = square_start + square_duration
 
 
                 ##-------------------RESET TRIAL CLOCK------------------------##
@@ -594,14 +691,8 @@ for rep in list(range(3)):
                 ##------------------------------------------------------------##
 
 
-                while continueRoutine and frameN <= trial_duration:
-                    if event.getKeys(keyList = ["escape"]):
-                        core.quit()
-                    # get current time
-                    t = trialClock.getTime()
-                    frameN += 1  # number of completed frames (so 0 is the first frame)
-
-                    key = event.getKeys(keyList = all_keys)
+                while continueRoutine and frameN <= squareend:
+                    while_start()
 
                     ##----------------SHAPES UPDATE---------------------------##
 
@@ -627,8 +718,8 @@ for rep in list(range(3)):
                         lilsquare.setAutoDraw(False)
                         lilsquare.tEnd = t
                         lilsquare.frameEnd = frameN
-                    elif frameN == trial_duration:
-                         key = ['nope']
+                    elif frameN == squareend:
+                        key = ['nope']
                     if len(key) > 0:
                         if frameN < lilstart:
                             lenkeylist += 1
@@ -637,17 +728,11 @@ for rep in list(range(3)):
                             square_right.setAutoDraw(False)
                             square_left.setAutoDraw(False)
                             square_bottom.setAutoDraw(False)
-                            cross.setAutoDraw(False)
 
 
                             ##-------------CHECK FOR RESPONSE-----------------##
 
-                            if (key == ['nope'] and trialopacity == 0) or (key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['b'] and lil_side == 0):
-                                acc = 1
-                                soundp = soundfiles[0]
-                            else:
-                                acc = 0
-                                soundp = soundfiles[1]
+                            check_correct((key == ['nope'] and trialopacity == 0) or (key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['b'] and lil_side == 0))
                             if rep == 1:
                                 trials.addResponse(acc)
                             acclist.append(acc)
@@ -668,6 +753,14 @@ for rep in list(range(3)):
 
                 if task != 3:
                     big_opacity(1)
+
+
+                ##----------------FINISH WHILE LOOP LEFTOVERS-----------------##
+
+                cross.setAutoDraw(False)
+
+                sound_clip.setSound(soundp)
+                sound_clip.play() #correct and incorrect sounds are both 250 ms
 
 
                 ##-------------------RECORD DATA------------------------------##
@@ -698,14 +791,100 @@ for rep in list(range(3)):
                 thisExp.addData('FlashSide', bulge_side)
                 thisExp.addData('CorrSide', lil_side)
                 thisExp.addData('SquareAbsent', square_absent)
-                thisExp.nextEntry()
-                sound_clip.setSound(soundp)
-                sound_clip.play() #correct and incorrect sounds are both 250 ms
 
-            if rep == 1:
-                q_opacity = trials.mean()
-                q_acc = round(np.mean(acclist) * 100)
-                qloop += 1
+                if rep == 1:
+                    q_opacity = trials.mean()
+                    q_acc = round(np.mean(acclist) * 100)
+                    qloop += 1
+
+
+
+                ##------------------------------------------------------------##
+                ##--------------SET WM/ARITHMETIC TRIALS & TIMING-------------##
+                ##------------------------------------------------------------##
+
+
+                if task == 4:
+                    penultimate_absent = expmatrix[8][randomseq[trial - 1]]
+                    last_absent = expmatrix[8][randomseq[trial]]
+                    corr_wmarith_choice = (penultimate_absent == last_absent)
+                else:
+                    penultimate_absent = "NA"
+                    last_absent = "NA"
+                    corr_wmarith_choice = (expmatrix[11][randomseq[trial]])
+
+                if expmatrix[9][randomseq[trial]]:
+                    for_start()
+                    lenkey_wmarith = 0
+
+                    if task == 4:
+                        my_inst = inst12
+                        correct_wmarith = ((key == "T" and corr_wmarith_choice) or (key == "F" and corr_wmarith_choice == False))
+                    else:
+                        my_inst = expmatrix[10][randomseq[trial]]
+                        correct_wmarith = (key == "T" and expmatrix[11][randomseq[trial]]) or (key == "F" and expmatrix[11][randomseq[trial]] == False)
+                    wmarith_probe.setText(my_inst)
+
+
+                    ##-----------------RESET TRIAL CLOCK----------------------##
+
+                    trialClock.reset()  # clock
+
+
+
+                    ##--------------------------------------------------------##
+                    ##----------------WHILE LOOP BEGINS-----------------------##
+                    ##--------------------------------------------------------##
+
+
+                    while continueRoutine and frameN <= wmarith_total:
+                        while_start()
+
+                        if frameN == wmarith_pause:
+                            wmarith_probe.setAutoDraw(True)
+                            wmarith_probe.tStart = t
+                            wmarith_probe.frameEnd = frameN
+                        elif frameN == wmarith_total:
+                             key = ['nope']
+                        if len(key) > 0:
+                            if frameN < wmarith_total:
+                                lenkey_wmarith += 1
+
+
+                            else: ##------------CHECK FOR RESPONSE------------##
+
+                                check_correct(correct_wmarith)
+
+
+                        ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
+
+                        if not continueRoutine:  # a component has requested a forced-end of Routine
+                            break
+                        else:
+                            win.flip()
+
+
+                    ##--------------FINISH WHILE LOOP LEFTOVERS---------------##
+
+                    wmarith_probe.setAutoDraw(False)
+
+                    sound_clip.setSound(soundp)
+                    sound_clip.play() #correct and incorrect sounds are both 250 ms
+
+
+                ##-------------------RECORD DATA------------------------------##
+                # thisExp.addData('wmarith_probeStartTime', wmarith_na('wmarith_probe.tStart'))
+                # thisExp.addData('wmarith_probeStartFrame', wmarith_na('wmarith_probe.frameStart'))
+                thisExp.addData('ButtonPressTime_wmarith', wmarith_na('t'))
+                # thisExp.addData('Key_wmarith', wmarith_na('key[0]'))
+                thisExp.addData('false_presses_wmarith', wmarith_na('lenkey_wmarith'))
+                thisExp.addData('Acc_wmarith', wmarith_na('acc'))
+                thisExp.addData('PenultimateAbsent', wmarith_na('penultimate_absent'))
+                thisExp.addData('LastAbsent', wmarith_na('last_absent'))
+                thisExp.addData('Corr_wmarith_choice', wmarith_na('corr_wmarith_choice'))
+                thisExp.nextEntry()
+
+
 
 
 
