@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 # PsychoPy is required for this experiment
+
 from psychopy import locale_setup, prefs, gui, visual, core, data, event, logging, clock, prefs
 prefs.general['audioLib'] = ['pyo']
 from psychopy import sound
@@ -41,18 +43,32 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 
 
 
-# Setup different tasks
-all_keys = ["l","L","a","A", "b", "B"]
 
-task = int(expInfo['session'])
+##--------------------------SETUP THE WINDOW----------------------------------##
 
-# Setup the Window
 win = visual.Window(
     size = (1024, 768), color = [.15, .15, .15], fullscr = False,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
 expInfo['frameRate'] = f_rate
+
+
+##--------------------SETUP DIFFERENT TASKSOW---------------------------------##
+
+main_keys = ["left", "down", "right"]
+wm_arith_keys = ["t", "T", "f", "F"]
+
+task = int(expInfo['session'])
+
+if task == 3:
+    num_to_word = "three"
+    other_squares_instr = "in the second big square on the screen."
+    absent_instructions = ""
+elif task == 2 or task == 4:
+    num_to_word = "two"
+    other_squares_instr = "with 50% probability in each of the other two squares."
+    absent_instructions =  " There are three possible locations for these big squares, and so one of the big squares will be \'absent\' per trial."
 
 
 
@@ -70,7 +86,7 @@ lilsize = 20
 lilsize = round_up_to_even(lilsize)
 
 def round_up_to_lilsize_multiple(f):
-    return math.ceil(f * 1.0 /lilsize) * lilsize
+    return math.ceil(f * 1.0 / lilsize) * lilsize
 
 square_size = 210
 square_size = round_up_to_lilsize_multiple(square_size)
@@ -116,16 +132,17 @@ bulge_start_max = to_frames(.8)
 lilafterbulge_constant = to_frames(.3)
 squareafterlil = to_frames(1)
 wmarith_pause = to_frames(.5)
-wmarith_total = wmarith_pause + to_frames(1.5)
+wmamrith_screen = 1.5
+wmarith_total = wmarith_pause + to_frames(wmamrith_screen)
 
-def while_start():
+def while_start(k):
     global t, frameN, key
     if event.getKeys(keyList = ["escape"]):
         core.quit()
     # get current time
     t = trialClock.getTime()
     frameN += 1  # number of completed frames (so 0 is the first frame)
-    key = event.getKeys(keyList = all_keys)
+    key = event.getKeys(keyList = k)
 
 def for_start():
     global frameN, continueRoutine
@@ -169,6 +186,7 @@ qtrials = 30
 qcutoff = 35
 startThresh = .85
 acc_aim = .65
+running_staircase_length = 16
 
 
 ##---------------------------TRIAL MATRIX & RANDOMIZATION---------------------##
@@ -250,19 +268,14 @@ for j in range(trials - len(sumlist)):
     corrlist.append(True)
 
 def check_correct(x):
-    global acc, soundp
-    if (x):
+    global acc, soundp, continueRoutine
+    if x:
         acc = 1
         soundp = soundfiles[0]
     else:
         acc = 0
         soundp = soundfiles[1]
-
-def wmarith_na(x):
-    if expmatrix[9][randomseq[trial]]:
-        return (globals()[x])
-    else:
-        return "NA"
+    continueRoutine = False
 
 combined = list(zip(sumlist, corrlist))
 random.shuffle(combined)
@@ -293,6 +306,16 @@ np.random.shuffle(randomseq)
 def big_opacity(s):
     return globals()["square_{0}".format(square_absent)].setOpacity(s)
 
+def save_data(r, s):
+    for i in s:
+        if not r:
+            resp = i[1]
+        elif expmatrix[9][randomseq[trial]]:
+            resp = globals()[i[1]]
+        else:
+            resp = "NA"
+        thisExp.addData(i[0], resp)
+
 
 ##----------------------MAKE THE SEARCH ARRAY ITEMS---------------------------##
 
@@ -302,143 +325,97 @@ cross = visual.ShapeStim(
     [0, 0], [-.1501 * cross_size, 0], [0, 0]], lineWidth = 2,
     lineColor = crosscolor, depth = -1.0)
 
-square_bottom = visual.Rect(
-    win = win, units = 'pix', height = square_size, width = square_size,
-    pos = (0, bottom_y), lineColor = shapecolor,
-    fillColor = shapecolor, depth = -1.0)
+def create_square(s, p, c):
+    return visual.Rect(win = win, units = 'pix', height = s, width = s,
+        pos = p, lineColor = shapecolor, fillColor = c, depth = -1.0)
 
-square_right = visual.Rect(
-    win = win, units = 'pix', height = square_size, width = square_size,
-    pos = (sides_x, sides_y),
-    lineColor = shapecolor, fillColor = shapecolor, depth = -1.0)
+square_left = create_square(square_size, (-sides_x, sides_y), shapecolor)
 
-square_left = visual.Rect(
-    win = win, units = 'pix', height = square_size, width = square_size,
-    pos = (-sides_x, sides_y),
-    lineColor = shapecolor, fillColor = shapecolor, depth = -1.0)
+square_bottom = create_square(square_size, (0, bottom_y), shapecolor)
 
-bulge = visual.Rect(
-    win = win, units = 'pix', height = square_size * 1.1, width = square_size * 1.1,
-    pos = (0, 0), lineColor = shapecolor,
-    fillColor = shapecolor, depth = -1.0)
+square_right = create_square(square_size, (sides_x, sides_y), shapecolor)
 
-lilsquare = visual.Rect(
-    win = win, units = 'pix', height = lilsize, width = lilsize,
-    lineColor = shapecolor, fillColor = lilcolor, depth = -1.0)
+bulge = create_square(square_size * 1.1, (0, 0), shapecolor)
 
-task_diagram_big_squares = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_big_squares_task_' + str(task) + '.png'),
-    pos = (.54, 0), size = (.8, 1), texRes = 256)
+lilsquare = create_square(lilsize, (0, 0), lilcolor)
 
-task_diagram_bulge = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_bulge_task_' + str(task) + '.png'),
-    pos = (.54, 0), size = (.8, 1), texRes = 256)
-
-task_diagram_lilsquare = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_lilsquare_task_' + str(task) + '.png'),
-    pos = (.54, 0), size = (.8, 1), texRes = 256)
-
-task_diagram_response = visual.ImageStim(
-    win = win, image = os.path.join('stimuli', 'stim_presentation_response_task_' + str(task) + '.png'),
-    pos = (.54, 0), size = (.8, 1), texRes = 256)
+def load_diagrams(r, s):
+    return visual.ImageStim(win = win, image = os.path.join('stimuli',
+        'task_diagram' + str(task) + str(r) + s + '.png'),
+        pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 
 ##-------------------------------INSTRUCTION SCREEN---------------------------##
 
 if task == 3:
     num_to_word = "three"
+    other_squares_instr = "in the second big square on the screen."
     absent_instructions = ""
-else:
+
+elif task == 2 or task == 4:
     num_to_word = "two"
+    other_squares_instr = "with 50% probability in each of the other two squares."
     absent_instructions =  " There are three possible locations for these big squares, and so one of the big squares will be \'absent\' per trial."
+
 if task == 4:
     wm_arith_task = "memory"
-else:
+elif task == 2 or task == 3:
     wm_arith_task = "arithmetic"
 
-inst0 = visual.TextStim(
-    win = win, text = "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". These " + wm_arith_task + "trials will follow some of the visual attention trials, but there will always be at least one visual attention trial between " + wm_arith_task + " trials.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+def create_inst(t):
+    return visual.TextStim(win = win, text = t, units = 'deg', pos = (0, 0),
+        height = 1, wrapWidth = 18)
 
-inst01 = visual.TextStim(
-    win = win, text = "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+def continue_goback(s):
+    return "\n\nPress space to " + s + " or \"B\" to go back."
 
-inst02 = visual.TextStim(
-    win = win, text = "This study will begin with two sets of practice trials. On each practice trial, like each trial in the main experiment, you will see " + num_to_word + " big squares appear on the screen.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst1 = create_inst("This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". These " + wm_arith_task + " trials will follow some of the visual attention trials, but there will always be at least one visual attention trial between " + wm_arith_task + " trials.\n\nPress space to continue.")
 
-inst04 = visual.TextStim(
-    win = win, text = "For example, one trial may begin with:",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst2 = create_inst("During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
 
-inst05 = visual.TextStim(
-    win = win, text = "and the next with :",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst3 = create_inst("This study will begin with two sets of practice trials. On each practice trial, like each trial in the main experiment, you will see " + num_to_word + " big squares appear on the screen." + continue_goback("continue"))
 
-inst06 = visual.TextStim(
-    win = win, text = "Once these " + num_to_word + " big squares appear, one of them will bulge shortly thereafter. This bulge is a cue for detecting a target.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst4 = create_inst("For example, one trial may begin with:\n\n\n\n\nand the next with:")
 
-inst1 = visual.TextStim(
-    win = win, text = "This study will begin with " + str(ptrials + qtrials) + " practice trials. On each practice trial, like each trial in the main experiment, you will see " + num_to_word + " big squares appear on the screen.\n\nPress space to continue.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst5 = create_inst("Once these " + num_to_word + " big squares appear, one of them will bulge shortly thereafter. This bulge is a cue for detecting a target." + continue_goback("continue"))
 
-inst2 = visual.TextStim(
-    win = win, text = "One of these squares will then bulge shortly thereafter.\n\nPress space to continue or \"B\" to go back.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst6 = create_inst(u"On some trials you will then see a dark target inside one of the big squares, and on other trials you will not see any target. When a trial does include a target, it will often—".encode('utf-8').decode('utf-8') + str(int(validity * 100)) + u"% of the time—be inside the same square as where the bulge occurred—we encourage you to take advantage of this knowledge! (The other ".encode('utf-8').decode('utf-8') + str(100 - int(validity * 100)) + "% of the time the target appears, it will appear " + other_squares_instr + continue_goback("continue"))
 
-inst3 = visual.TextStim(
-    win = win, text = "Then on some trials you will see a little square inside one of the " + num_to_word + " squares, and on other trials you will not see any little square. " + str(int(validity * 100)) + "% of little squares will occur at the same square as the bulge, and you are encouraged to use this information to aid your performance.\n\nPress space to continue or \"B\" to go back.",
-    units='deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst7 = create_inst("Since there are also some trials without any target, you can indicate not seeing a dark target by not pressing any button. If you do see a target, indicate within one second of its onset whether it was in the big square on the left (press the left arrow key), bottom (press the down arrow key) or right (press the right arrow key)." + continue_goback("continue"))
 
-inst4 = visual.TextStim(
-    win = win, text = "When the little square appears, you will have one second to indicate whether it was on the left, bottom, or right of the screen by pressing, respectively, the \"A\", \"B\", or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Please gaze at the cross in the center of the screen the whole time and detect the little square with your peripheral vision.\n\nPress space to continue or \"B\" to go back.",
-    units = 'deg', pos = (-8, 0), height = 1, wrapWidth = 18)
+inst8_10_help = "You will have " + str(wmamrith_screen) + " seconds to"
 
-inst5 = visual.TextStim(
-    win = win, text = "Again, these are practice trials, and if you do well enough on the practice trials, you will move on directly to the main experiment; otherwise you'll get a second chance to improve on the practice. As a reminder, when the little square appears, you will have one second to indicate whether it was on the left, bottom, or right of the screen by pressing, respectively, the \"A\", \"B\", or \"L\" keys.\n\nPress space to begin or \"B\" to go back.",
-    units = 'deg', height = 1, wrapWidth = 20)
+inst8 = create_inst("After some trials, an arithmetic equation will appear. " + inst8_10_help + " indicate whether the total on the left is equal to the number on the right (press \'" + wm_arith_keys[1] + "\' for True or \'" + wm_arith_keys[3] + "\' for False. For example:")
 
-inst6 = visual.TextStim(
-    win = win, text = "Please see the experimenter.",
-    units = 'deg', height = 1, wrapWidth = 20)
+inst9 = create_inst("After some trials, you will be asked whether the most recent and second-most-recent trials omitted a big square in the same location. For example:")
 
-inst7 = visual.TextStim(
-    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 40 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (the breaks will be self-timed, so you can take as long as you'd like during them before proceeding to the subsequent trials).\n\nPress space to continue.",
-    units = 'deg', height = 1, wrapWidth = 20)
+inst10 = create_inst("If the omission was in the same location, press \'" + wm_arith_keys[1] + "\'. If the omitted square changed locations between the last two trials, press \'" + wm_arith_keys[3] + "\''. " + str(inst8_10_help) + " respond.")
 
-inst8 = visual.TextStim(
-    win = win, text = "The forthcoming trials will work just like the practice trials: " + num_to_word + " big squares, a bulge, and then one second to push a button to answer where the little square appeared, or not to push a button in case you did not see a little square. Again, please gaze at the cross in the center of the screen the whole time and only use peripheral vision to detect the little square.\n\nPress space to begin or \"B\" to go back.",
-    units = 'deg', height = 1, wrapWidth = 20)
 
-inst9 = visual.TextStim(
-    win = win, text = "Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.",
-    units = 'deg', height = 1, wrapWidth = 20)
+def stim_draw(j, k, m, n, p):
+    globals()[(j + str(k) + "{0}" + n).format(str(m))].setAutoDraw(p)
+
+def inst_loop(q):
+    p = (inst for inst in list(range(1, 11)) if inst != q)
+    for i in p:
+        try:
+            stim_draw("inst", "", i, "", False)
+            stim_draw("task_diagram", task, i, "", False)
+            stim_draw("task_diagram", task, i, "_2", False)
+        except:
+            pass
+
+    try:
+        stim_draw("inst", "", q, "", True)
+        stim_draw("inst", task, q, "", True)
+        stim_draw("inst", task, q, "_2", True)
+    except:
+        pass
 
 wmarith_probe = visual.TextStim(
-    win = win, text = "Filler question",
-    units = 'deg', height = 1, wrapWidth = 20)
+    win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 20)
 
-inst12 = 'Was the omitted square in the same location during the last two trials?\nPress \"T\" for True or \"F\" for False.'
-
-# inst01 = visual.TextStim(
-#     win = win, text = "This study features two tasks, a visual attention task and one that (tests recall / arithmetic). These (recall/ arithmetic) trials will follow some of the visual attention trials, but there will always be at least one visual attention trial between recall/arithmetic trials.",
-#     units = 'deg', height = 1, wrapWidth = 20)
-#
-# inst02 = visual.TextStim(
-#     win = win, text = "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross.",
-#     units = 'deg', height = 1, wrapWidth = 20)
-#
-# #inst1 #There are three possible locations for these big squares, and so one of the big squares will be `absent` per trial.
-#
-# # For example, one trial may begin with : and the next with :__
-#
-# # Once these two big squares appear, one of them will bulge shortly thereafter. This bulge is a cue for detecting a target.
-#
-# #
-
-
+inst12 = "Was the omitted square in the same location during the last two trials?\nPress \'" + wm_arith_keys[1] + "\' for True or \'" + wm_arith_keys[3] + "\' for False."
 
 
 
@@ -460,61 +437,43 @@ inst12 = 'Was the omitted square in the same location during the last two trials
 
 advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
 
-while advance < 5:
+while advance < 10:
     if event.getKeys(keyList = ["space"]):
         advance += 1
     elif event.getKeys(keyList = ["b"]):
         if advance > 0:
             advance -= 1
     if advance == 0:
-        inst2.setAutoDraw(False)
-        inst3.setAutoDraw(False)
-        inst4.setAutoDraw(False)
-        inst5.setAutoDraw(False)
-        task_diagram_bulge.setAutoDraw(False)
-        task_diagram_lilsquare.setAutoDraw(False)
-        task_diagram_response.setAutoDraw(False)
-        inst1.setAutoDraw(True)
-        task_diagram_big_squares.setAutoDraw(True)
+        inst_loop(1)
     elif advance == 1:
-        inst1.setAutoDraw(False)
-        inst3.setAutoDraw(False)
-        inst4.setAutoDraw(False)
-        inst5.setAutoDraw(False)
-        task_diagram_big_squares.setAutoDraw(False)
-        task_diagram_lilsquare.setAutoDraw(False)
-        task_diagram_response.setAutoDraw(False)
-        inst2.setAutoDraw(True)
-        task_diagram_bulge.setAutoDraw(True)
+        inst_loop(2)
     elif advance == 2:
-        inst2.setAutoDraw(False)
-        inst4.setAutoDraw(False)
-        inst5.setAutoDraw(False)
-        task_diagram_bulge.setAutoDraw(False)
-        task_diagram_response.setAutoDraw(False)
-        inst3.setAutoDraw(True)
-        task_diagram_lilsquare.setAutoDraw(True)
+        inst_loop(3)
     elif advance == 3:
-        inst3.setAutoDraw(False)
-        inst5.setAutoDraw(False)
-        task_diagram_lilsquare.setAutoDraw(False)
-        inst4.setAutoDraw(True)
-        task_diagram_response.setAutoDraw(True)
+        inst_loop(4)
     elif advance == 4:
-        inst4.setAutoDraw(False)
-        task_diagram_response.setAutoDraw(False)
-        inst5.setAutoDraw(True)
+        inst_loop(5)
+    elif advance == 5:
+        inst_loop(6)
+    elif advance == 6:
+        inst_loop(7)
+    elif advance == 7:
+        inst_loop(8)
+    elif advance == 8:
+        inst_loop(9)
+    elif advance == 9:
+        inst_loop(10)
     else:
-        inst5.setAutoDraw(False)
+        inst_loop(11)
 
 
     win.flip()
 
 
+
 ##----------------------------------------------------------------------------##
 ##--------------------------START MAIN EXPERIMENT TRIALS----------------------##
 ##----------------------------------------------------------------------------##
-
 
 
 trials = list(range(ptrials))
@@ -641,7 +600,7 @@ for rep in list(range(3)):
                 else:
                     extracted_opacity = expmatrix[5][randomseq[trial]]
                     if extracted_opacity > 0:
-                        if noncatch_count > 0 and noncatch_count % 16 == 0:
+                        if noncatch_count > 0 and noncatch_count % running_staircase_length == 0:
                             repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase)
                             q_opacity += .6 * (acc_aim - repstair_avg)
                             repstaircase = []
@@ -654,7 +613,7 @@ for rep in list(range(3)):
                 ##-----------------SET BIG SQUARES' OPACITY-------------------##
                 if task == 3:
                     square_absent = "NA"
-                else:
+                elif task == 2 or task == 4:
                     square_absent = expmatrix[8][randomseq[trial]]
                     big_opacity(0)
 
@@ -692,7 +651,7 @@ for rep in list(range(3)):
 
 
                 while continueRoutine and frameN <= squareend:
-                    while_start()
+                    while_start(main_keys)
 
                     ##----------------SHAPES UPDATE---------------------------##
 
@@ -724,7 +683,6 @@ for rep in list(range(3)):
                         if frameN < lilstart:
                             lenkeylist += 1
                         else:
-                            continueRoutine = False
                             square_right.setAutoDraw(False)
                             square_left.setAutoDraw(False)
                             square_bottom.setAutoDraw(False)
@@ -732,7 +690,7 @@ for rep in list(range(3)):
 
                             ##-------------CHECK FOR RESPONSE-----------------##
 
-                            check_correct((key == ['nope'] and trialopacity == 0) or (key == ['l'] and lil_side == 1) or (key == ['a'] and lil_side == -1) or (key == ['b'] and lil_side == 0))
+                            check_correct((key == ['nope'] and trialopacity == 0) or (key[0] == main_keys[0] and lil_side == -1) or (key[0] == main_keys[1] and lil_side == 0) or (key[0] == main_keys[2] and lil_side == 1))
                             if rep == 1:
                                 trials.addResponse(acc)
                             acclist.append(acc)
@@ -771,26 +729,29 @@ for rep in list(range(3)):
                     thisExp.addData('Trial', trial + 1)
                     if trialopacity > 0:
                         repstaircase.append(acc)
-                thisExp.addData('ButtonPressTimeinOverallExp', overalltime)
-                thisExp.addData('squareStartTime', square_right.tStart)
-                thisExp.addData('squareStartFrame', square_right.frameStart)
-                thisExp.addData('flash_circleStartTime', bulge.tStart)
-                thisExp.addData('flash_circleStartFrame', bulge.frameStart)
-                thisExp.addData('flash_circleEndTime', bulge.tEnd)
-                thisExp.addData('flash_circleEndFrame', bulge.frameEnd)
-                thisExp.addData('lilsquareStartTime', lilsquare.tStart)
-                thisExp.addData('lilsquareStartFrame', lilsquare.frameStart)
-                thisExp.addData('lilsquareEndTime', lilsquare.tEnd)
-                thisExp.addData('lilsquareEndFrame', lilsquare.frameEnd)
-                thisExp.addData('lilafterflash', lilafterbulge)
-                thisExp.addData('ButtonPressTime', t)
-                thisExp.addData('Key', key[0])
-                thisExp.addData('false_presses', lenkeylist)
-                thisExp.addData('Acc', acc)
-                thisExp.addData('Opacity', trialopacity)
-                thisExp.addData('FlashSide', bulge_side)
-                thisExp.addData('CorrSide', lil_side)
-                thisExp.addData('SquareAbsent', square_absent)
+
+                save_data(False, [
+                    ['ButtonPressTimeinOverallExp', overalltime],
+                    ['squareStartTime', square_right.tStart],
+                    ['squareStartFrame', square_right.frameStart],
+                    ['flash_circleStartTime', bulge.tStart],
+                    ['flash_circleStartFrame', bulge.frameStart],
+                    ['flash_circleEndTime', bulge.tEnd],
+                    ['flash_circleEndFrame', bulge.frameEnd],
+                    ['lilsquareStartTime', lilsquare.tStart],
+                    ['lilsquareStartFrame', lilsquare.frameStart],
+                    ['lilsquareEndTime', lilsquare.tEnd],
+                    ['lilsquareEndFrame', lilsquare.frameEnd],
+                    ['lilafterflash', lilafterbulge],
+                    ['ButtonPressTime', t],
+                    ['Key', key[0]],
+                    ['false_presses', lenkeylist],
+                    ['Acc', acc],
+                    ['Opacity', trialopacity],
+                    ['FlashSide', bulge_side],
+                    ['CorrSide', lil_side],
+                    ['SquareAbsent', square_absent]
+                ])
 
                 if rep == 1:
                     q_opacity = trials.mean()
@@ -808,10 +769,10 @@ for rep in list(range(3)):
                     penultimate_absent = expmatrix[8][randomseq[trial - 1]]
                     last_absent = expmatrix[8][randomseq[trial]]
                     corr_wmarith_choice = (penultimate_absent == last_absent)
-                else:
+                elif task == 2 or task == 3:
                     penultimate_absent = "NA"
                     last_absent = "NA"
-                    corr_wmarith_choice = (expmatrix[11][randomseq[trial]])
+                    corr_wmarith_choice = expmatrix[11][randomseq[trial]]
 
                 if expmatrix[9][randomseq[trial]]:
                     for_start()
@@ -819,10 +780,12 @@ for rep in list(range(3)):
 
                     if task == 4:
                         my_inst = inst12
-                        correct_wmarith = ((key == "T" and corr_wmarith_choice) or (key == "F" and corr_wmarith_choice == False))
-                    else:
+                        def correct_wmarith():
+                            return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
+                    elif task == 2 or task == 3:
                         my_inst = expmatrix[10][randomseq[trial]]
-                        correct_wmarith = (key == "T" and expmatrix[11][randomseq[trial]]) or (key == "F" and expmatrix[11][randomseq[trial]] == False)
+                        def correct_wmarith():
+                            return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
                     wmarith_probe.setText(my_inst)
 
 
@@ -838,7 +801,7 @@ for rep in list(range(3)):
 
 
                     while continueRoutine and frameN <= wmarith_total:
-                        while_start()
+                        while_start(wm_arith_keys)
 
                         if frameN == wmarith_pause:
                             wmarith_probe.setAutoDraw(True)
@@ -847,13 +810,11 @@ for rep in list(range(3)):
                         elif frameN == wmarith_total:
                              key = ['nope']
                         if len(key) > 0:
-                            if frameN < wmarith_total:
+                            if frameN < wmarith_pause:
                                 lenkey_wmarith += 1
 
-
-                            else: ##------------CHECK FOR RESPONSE------------##
-
-                                check_correct(correct_wmarith)
+                            else:
+                                check_correct(correct_wmarith())
 
 
                         ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
@@ -873,15 +834,18 @@ for rep in list(range(3)):
 
 
                 ##-------------------RECORD DATA------------------------------##
-                # thisExp.addData('wmarith_probeStartTime', wmarith_na('wmarith_probe.tStart'))
-                # thisExp.addData('wmarith_probeStartFrame', wmarith_na('wmarith_probe.frameStart'))
-                thisExp.addData('ButtonPressTime_wmarith', wmarith_na('t'))
-                # thisExp.addData('Key_wmarith', wmarith_na('key[0]'))
-                thisExp.addData('false_presses_wmarith', wmarith_na('lenkey_wmarith'))
-                thisExp.addData('Acc_wmarith', wmarith_na('acc'))
-                thisExp.addData('PenultimateAbsent', wmarith_na('penultimate_absent'))
-                thisExp.addData('LastAbsent', wmarith_na('last_absent'))
-                thisExp.addData('Corr_wmarith_choice', wmarith_na('corr_wmarith_choice'))
+
+                save_data(True, [
+                    # ['wmarith_probeStartTime', 'wmarith_probe.tStart'],
+                    # ['wmarith_probeStartFrame', 'wmarith_probe.frameStart'],
+                    ['ButtonPressTime_wmarith', 't'],
+                    # ['Key_wmarith', 'key[0]'],
+                    ['false_presses_wmarith', 'lenkey_wmarith'],
+                    ['Acc_wmarith', 'acc'],
+                    ['PenultimateAbsent', 'penultimate_absent'],
+                    ['LastAbsent', 'last_absent'],
+                    ['Corr_wmarith_choice', 'corr_wmarith_choice']
+                ])
                 thisExp.nextEntry()
 
 
