@@ -122,7 +122,6 @@ def to_frames(t): # converts time to frames accounting for the computer's refres
     return int(round(t / win.monitorFramePeriod))
 
 stagger = to_frames(.0167)
-blockdelay = to_frames(1.5) # creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
 lilduration = to_frames(.0333)
 bulge_duration = to_frames(.0333)
 trial_start_min = to_frames(1)
@@ -149,6 +148,18 @@ def for_start():
     frameN = -1
     continueRoutine = True
 
+def blockdelay(): # creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
+    frameN = -1
+    while frameN < to_frames(1.5):
+        frameN += 1
+        win.flip()
+
+def short_on_off(r):
+    s = globals()[r]
+    s.setAutoDraw(True)
+    while len(event.getKeys(keyList=['space'])) == 0:
+        win.flip()
+    s.setAutoDraw(False)
 
 ##--------------------------------CREATE TIMERS-------------------------------##
 
@@ -181,7 +192,7 @@ wmarith_freq = .2
 wmarith_trials = int(total_trials * wmarith_freq)
 no_wmarith_trials = total_trials - wmarith_trials
 
-ptrials = 10
+ptrials = 15
 qtrials = 30
 qcutoff = 35
 startThresh = .85
@@ -351,16 +362,16 @@ if task == 3:
     num_to_word = "three"
     other_squares_instr = "in the second big square on the screen."
     absent_instructions = ""
-    inst4_help1 = " in three possible locations"
-    inst4_help2 = " Those two locations will vary from trial to trial."
+    inst4_help1 = ""
+    inst4_help2 = ""
+
 
 elif task == 2 or task == 4:
     num_to_word = "two"
     other_squares_instr = "with 50% probability in each of the other two squares."
     absent_instructions =  " There are three possible locations for these big squares, and so one of the big squares will be \'absent\' per trial."
-    inst4_help1 = ""
-    inst4_help2 = ""
-
+    inst4_help1 = " in three possible locations"
+    inst4_help2 = " Those two locations will vary from trial to trial."
 
 def create_inst(t):
     return visual.TextStim(win = win, text = t, units = 'deg', pos = (0, 0),
@@ -376,7 +387,7 @@ if task == 4:
 elif task == 2 or task == 3:
     wm_arith_task = "arithmetic"
     a_or_an = "an"
-    inst7 = create_inst("Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the sum on the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue"))
+    inst7 = create_inst("Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue"))
 
 
 inst1 = create_inst("This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
@@ -389,25 +400,19 @@ inst4 = create_inst("In the first phase of trials, " + num_to_word + " squares "
 
 inst5 = create_inst("Next, a cue that bulges around one of the squares will appear and indicate with " + str(int(validity * 100)) + "% likelihood which square the target (the next phase) will appear in." + continue_goback("continue"))
 
-inst6 = create_inst("Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + " arrow key for the respective square." + continue_goback("continue"))
+inst6 = create_inst("Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + u" arrow key for the respective square. If you do not see a target, indicate this by not pressing any button." + continue_goback("continue"))
 
 inst8 = create_inst(u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first block, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial." + continue_goback("continue"))
 
-plzcexp = visual.TextStim(
-    win = win, text = "Please see the experimenter.",
-    units = 'deg', height = 1, wrapWidth = 20)
+secondpractice = create_inst("In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
 
-welcmmain = visual.TextStim(
-    win = win, text = "Welcome to the beginning of the main experiment. This experiment will last about 50 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (which will be self-timed, so you can break as long as you'd like).\n\nPress space to continue.",
-    units = 'deg', height = 1, wrapWidth = 20)
+plzcexp = create_inst("Please see the experimenter.")
 
-main_prev = visual.TextStim(
-    win = win, text = "The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"),
-    units = 'deg', height = 1, wrapWidth = 20)
+welcmmain = create_inst("Welcome to the beginning of the main experiment. This experiment will last about 50 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (which will be self-timed, so you can break as long as you'd like).\n\nPress space to continue.")
 
-thanks = visual.TextStim(
-    win = win, text = "Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.",
-    units = 'deg', height = 1, wrapWidth = 20)
+main_prev = create_inst("The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"))
+
+thanks = create_inst("Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.")
 
 
 def stim_draw(j, k, m, n, p):
@@ -433,7 +438,7 @@ def inst_loop(q):
 wmarith_probe = visual.TextStim(
     win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 20)
 
-inst12 = "Was the omitted square in the same location during the last two trials?\nPress \'" + wm_arith_keys[1] + "\' for True or \'" + wm_arith_keys[3] + "\' for False."
+inst12 = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
 
 
 
@@ -480,7 +485,6 @@ while advance < 8:
     else:
         inst_loop(9)
 
-
     win.flip()
 
 
@@ -495,17 +499,20 @@ qcompleted = 0 # no practice trial restarts
 noncatch_count = 0
 repstaircase = []
 
+# the 3 reps stand for practice rep, staircase rep, and then main experiment rep
 for rep in list(range(3)):
-    q_acc = 0
-    if rep == 0:
-        trials = list(range(ptrials))
-    if rep == 2:
-        blocks = blocksreal
-        np.random.shuffle(randomseq) # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
-    while q_acc < qcutoff:
-        acclist = []
+    if rep == 1:
+        q_acc = 0 # just a placeholder really/ arbitrary value so we can enter the while loop
+    else:
+        q_acc = "NA" # just a placeholder really/ arbitrary value so we can enter the while loop
+
+
+    # the idea of this while loop is to keep repeating qwest staircase until participant is performing well enough
+    while q_acc == "NA" or q_acc < qcutoff:
         if rep == 1:
 
+            if qcompleted == 0:
+                short_on_off('secondpractice') # present instructions for second practice block (aka staircasing)
 
             ##------TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART---------##
 
@@ -520,75 +527,69 @@ for rep in list(range(3)):
             ##---SHOW INSTRUCTIONS AGAIN IF PTCPT HASN'T REACHED THRESHOLD----##
 
             if qcompleted == 1:
-                inst4 = visual.TextStim(
-                    win = win, text = str(q_acc) + "% of your responses were correct, which is less than the " + str(qcutoff) + "% threshold. As a reminder, when the target appears, you will have one second to indicate whether it was on the left or right of the screen by pressing, respectively, the \"A\" or \"L\" keys. If you do not see a little square, indicate this by not pressing any button. Finally, please detect the little square with your peripheral vision and gaze at the cross in the center of the screen the whole time.\n\nPlease press the space bar to try again.",
+                tryagain = visual.TextStim(
+                    win = win, text = str(q_acc) + "% of your visual attention responses were correct, which is less than the " + str(qcutoff) + "% threshold. As a reminder, when the target appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + " arrow key for the respective square. If you do not see a little square, indicate this by not pressing any button.\n\nPlease press the space bar to try again.",
                     units = 'deg', height = 1, wrapWidth = 20)
                 continueRoutine_q = True
-                inst4.setAutoDraw(True)
-                while len(event.getKeys(keyList=['space'])) == 0:
-                    win.flip()
-                inst4.setAutoDraw(False)
+                short_on_off('tryagain')
 
                 startThresh += .2 # increases opacity of starting opacity each they miss accuracy threshold
 
-                frameN = -1
-                while frameN < blockdelay:
-                    frameN += 1
+        elif rep == 0 or rep == 2:
+            q_acc = "break out of while after one run-through"
+            if rep == 2:
+                blocks = blocksreal
+                np.random.shuffle(randomseq) # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
+
+                continueRoutineInst = True
+                advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
+                while continueRoutineInst:
+                    if event.getKeys(keyList = ["space"]):
+                        advance += 1
+                    elif event.getKeys(keyList = ["b"]):
+                        if advance > 0:
+                            advance -= 1
+                    if advance == 0:
+                        main_prev.setAutoDraw(False)
+                        welcmmain.setAutoDraw(True)
+                    elif advance == 1:
+                        welcmmain.setAutoDraw(False)
+                        main_prev.setAutoDraw(True)
+                    else:
+                        main_prev.setAutoDraw(False)
+                        continueRoutineInst = False
+
                     win.flip()
 
-            trials = data.QuestHandler(startVal = startThresh, startValSd = .23,
-                pThreshold = acc_aim, gamma = 0.05,
-                nTrials = qtrials, minVal = .01, maxVal = 4)
-        else:
-            q_acc = qcutoff + 1
-            frameN = -1 # number of completed frames (so 0 is the first frame)
-            while frameN < blockdelay: # creates a 1.5 second blank screen that appears after the instructions but before the first practice trial begins
-                frameN += 1
-                win.flip()
+        blockdelay()
+
 
         for block in list(range(blocks)):
-            if rep == 2:
-                continueRoutineInst = True
-
-                break_message = visual.TextStim(
-                    win = win, text = "You've reached break " + str(block) + " of " + str(blocks-1) + ". This break is self-timed, so whenever you're ready press spacebar to continue the study.\n\nAs a reminder, 75% of little squares will be on the same side as the frame.",
-                    units = 'deg', height = 1, wrapWidth = 20)
-
-                advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
-
-                while continueRoutineInst:
-                    if block == 0:
-                        if event.getKeys(keyList = ["space"]):
-                            advance += 1
-                        elif event.getKeys(keyList = ["b"]):
-                            if advance > 0:
-                                advance -= 1
-                        if advance == 0:
-                            main_prev.setAutoDraw(False)
-                            break_message.setAutoDraw(True)
-                        elif advance == 1:
-                            break_message.setAutoDraw(False)
-                            main_prev.setAutoDraw(True)
-                        else:
-                            main_prev.setAutoDraw(False)
-                            continueRoutineInst = False
-
-                    else:
-                        break_message.setAutoDraw(True)
-                        if event.getKeys(keyList = ["space"]):
-                            continueRoutineInst = False
-                            break_message.setAutoDraw(False)
-
-                    if continueRoutineInst:
-                        win.flip()
-
-                frameN = -1
-                while frameN < blockdelay:
-                    frameN += 1
-                    win.flip()
-
+        # until the 'if block > 0' line, sets the number of trials for each run through the upcoming for loop
+            if rep == 0:
+                trials = list(range(ptrials))
+                pacclist = []
+            elif rep == 1:
+                trials = data.QuestHandler(startVal = startThresh, startValSd = .23,
+                    pThreshold = acc_aim, gamma = 0.05,
+                    nTrials = qtrials, minVal = .01, maxVal = 4)
+                qacclist = []
+            elif rep == 2:
                 startingtrial = block * trialsperblock
                 trials = list(range(startingtrial, startingtrial + trialsperblock)) # shift trials from qwest/practice to total trials / blocks
+
+                # set up screen between blocks showing how many blocks are left
+                if block > 0:
+                    break_message = visual.TextStim(
+                        win = win, text = "You've reached break " + str(block) + " of " + str(blocks-1) + ". This break is self-timed, so whenever you're ready press spacebar to continue the study.\n\nAs a reminder, 75% of little squares will be on the same side as the frame.",
+                        units = 'deg', height = 1, wrapWidth = 20)
+
+                    break_message.setAutoDraw(True)
+                    if event.getKeys(keyList = ["space"]):
+                        continueRoutineInst = False
+                        break_message.setAutoDraw(False)
+
+                    blockdelay()
 
 
 
@@ -615,9 +616,9 @@ for rep in list(range(3)):
                 else:
                     extracted_opacity = expmatrix[5][randomseq[trial]]
                     if extracted_opacity > 0:
-                        if noncatch_count > 0 and noncatch_count % running_staircase_length == 0:
-                            repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase)
-                            q_opacity += .6 * (acc_aim - repstair_avg)
+                        if noncatch_count > 0 and noncatch_count % running_staircase_length == 0: # checks whether it's been 'running_staircase_length' number of experimental trials since the last resetting of opacity/staircase and therefore time to reset it
+                            repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase) # repstaircase is the average accuracy over the last 'running_staircase_length' experimental trials
+                            q_opacity += .6 * (acc_aim - repstair_avg) # either increases or decreases the staircase by .6 opacity * the difference between the hoped-for accuracy and the average accuracy on the  last 'running_staircase_length' experimental trials
                             repstaircase = []
                         noncatch_count += 1 # counts number of experimental (non-catch) trials before re-implementing staircase/ updated opacity
                     trialopacity = extracted_opacity * q_opacity # whether no opacity * threshold
@@ -708,7 +709,7 @@ for rep in list(range(3)):
                             check_correct((key == ['nope'] and trialopacity == 0) or (key[0] == main_keys[0] and lil_side == -1) or (key[0] == main_keys[1] and lil_side == 0) or (key[0] == main_keys[2] and lil_side == 1))
                             if rep == 1:
                                 trials.addResponse(acc)
-                            acclist.append(acc)
+                                qacclist.append(acc) # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
 
 
                     event.clearEvents()     # Clear the previously pressed keys; too-early key presses will automatically register as incorrect
@@ -716,10 +717,10 @@ for rep in list(range(3)):
 
                     ##--------CHECK ALL IF COMPONENTS HAVE FINISHED-----------##
 
+                    win.flip()
                     if not continueRoutine:  # a component has requested a forced-end of Routine
                         break
-                    else:
-                        win.flip()
+
 
 
                 ##----------------RESET BIG SQUARES' OPACITY------------------##
@@ -768,11 +769,6 @@ for rep in list(range(3)):
                     ['SquareAbsent', square_absent]
                 ])
 
-                if rep == 1:
-                    q_opacity = trials.mean()
-                    q_acc = round(np.mean(acclist) * 100)
-                    qcompleted += 1
-
 
 
                 ##------------------------------------------------------------##
@@ -789,7 +785,7 @@ for rep in list(range(3)):
                     last_absent = "NA"
                     corr_wmarith_choice = expmatrix[11][randomseq[trial]]
 
-                if expmatrix[9][randomseq[trial]]:
+                if expmatrix[9][randomseq[trial]] or rep == 0: # or rep == 0 means that for any trial in rep == 0 (practice trials) there will be a wm/arith task on the screen
                     for_start()
                     lenkey_wmarith = 0
 
@@ -830,14 +826,16 @@ for rep in list(range(3)):
 
                             else:
                                 check_correct(correct_wmarith())
+                                if rep == 0:
+                                    pacclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
 
 
                         ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
 
+                        win.flip()
                         if not continueRoutine:  # a component has requested a forced-end of Routine
                             break
-                        else:
-                            win.flip()
+
 
 
                     ##--------------FINISH WHILE LOOP LEFTOVERS---------------##
@@ -863,14 +861,18 @@ for rep in list(range(3)):
                 ])
                 thisExp.nextEntry()
 
+            if rep == 0:
+                p_acc = round(np.mean(pacclist) * 100)
+            elif rep == 1:
+                q_opacity = trials.mean()
+                q_acc = round(np.mean(qacclist) * 100)
+                qcompleted += 1
 
 
 
 
-thanks.setAutoDraw(True)
-while len(event.getKeys(keyList=['space'])) == 0:
-    win.flip()
-thanks.setAutoDraw(False)
+
+short_on_off('thanks')
 
 # these shouldn't be strictly necessary (should auto-save)
 thisExp.saveAsWideText(filename + '.csv')
