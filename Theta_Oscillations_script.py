@@ -54,7 +54,7 @@ f_rate = win.getActualFrameRate()
 expInfo['frameRate'] = f_rate
 
 
-##--------------------SETUP DIFFERENT TASKSOW---------------------------------##
+##---------------------SETUP DIFFERENT TASKS----------------------------------##
 
 main_keys = ["left", "down", "right"]
 wm_arith_keys = ["s", "S", "d", "D"]
@@ -112,8 +112,8 @@ opacity = .11
 ##---------------------------SOUND NOISE & LOUDNESS---------------------------##
 
 sound_clip = sound.Sound('A')
-soundfiles = [os.path.join('stimuli','ding.wav'),
-              os.path.join('stimuli','chord.wav')]
+soundfiles = [os.path.join('stimuli', 'ding.wav'),
+              os.path.join('stimuli', 'chord.wav')]
 
 
 ##-----------------------TARGET INTERVALS & DURATION SIZES--------------------##
@@ -192,8 +192,9 @@ wmarith_freq = .2
 wmarith_trials = int(total_trials * wmarith_freq)
 no_wmarith_trials = total_trials - wmarith_trials
 
-ptrials = 15
+ptrials = 2
 qtrials = 30
+pcutoff = 70
 qcutoff = 35
 startThresh = .85
 acc_aim = .65
@@ -383,11 +384,11 @@ def continue_goback(s):
 if task == 4:
     wm_arith_task = "memory"
     a_or_an = "a"
-    inst7 = create_inst("Memory trials will ask you whether the third location in the last two trials (where there was no square on the screen) was the same location (press \"" + wm_arith_keys[1] + "\") or whether it differed (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue"))
+    inst7_text = "Memory trials will ask you whether the third location in the last two trials (where there was no square on the screen) was the same location (press \"" + wm_arith_keys[1] + "\") or whether it differed (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
 elif task == 2 or task == 3:
     wm_arith_task = "arithmetic"
     a_or_an = "an"
-    inst7 = create_inst("Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue"))
+    inst7_text = "Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
 
 
 inst1 = create_inst("This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
@@ -401,6 +402,8 @@ inst4 = create_inst("In the first phase of trials, " + num_to_word + " squares "
 inst5 = create_inst("Next, a cue that bulges around one of the squares will appear and indicate with " + str(int(validity * 100)) + "% likelihood which square the target (the next phase) will appear in." + continue_goback("continue"))
 
 inst6 = create_inst("Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + u" arrow key for the respective square. If you do not see a target, indicate this by not pressing any button." + continue_goback("continue"))
+
+inst7 = create_inst(inst7_text)
 
 inst8 = create_inst(u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first block, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial." + continue_goback("continue"))
 
@@ -439,6 +442,9 @@ wmarith_probe = visual.TextStim(
     win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 20)
 
 inst12 = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
+
+def rep_acc():
+    return globals()["{0}_acc".format(abbr)]
 
 
 
@@ -495,85 +501,89 @@ while advance < 8:
 
 
 q_opacity = 0
-qcompleted = 0 # no practice trial restarts
 noncatch_count = 0
 repstaircase = []
 
 # the 3 reps stand for practice rep, staircase rep, and then main experiment rep
 for rep in list(range(3)):
-    if rep == 1:
-        q_acc = 0 # just a placeholder really/ arbitrary value so we can enter the while loop
-    else:
-        q_acc = "NA" # just a placeholder really/ arbitrary value so we can enter the while loop
 
+    rep_acc = "NA" # just a placeholder really/ arbitrary value so we can enter the while loop
+    loopscompleted = 0 # no practice trial restarts at beginning of each rep
+
+    if rep == 0:
+        abbr = "p"
+    elif rep == 1:
+        abbr = "q"
 
     # the idea of this while loop is to keep repeating qwest staircase until participant is performing well enough
-    while q_acc == "NA" or q_acc < qcutoff:
-        if rep == 1:
+    while rep_acc == "NA" or (rep < 2 and rep_acc < globals()["{0}cutoff".format(abbr)]):
 
-            if qcompleted == 0:
+        if rep == 0 or rep == 1:
+            if rep == 1 and loopscompleted == 0:
                 short_on_off('secondpractice') # present instructions for second practice block (aka staircasing)
+            elif loopscompleted > 0:
+                if rep == 0:
+                    task_text = wm_arith_task
+                    task_reminder = u"— ".encode('utf-8').decode('utf-8') + inst7_text
+                elif rep == 1:
+                    task_text = "visual attention"
+                    task_reminder = ", when the target appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] + ", or " + main_keys[0] + " arrow key for the respective square. If you do not see a little square, indicate this by not pressing any button"
+                    startThresh += .2 # increases opacity of starting opacity each they miss accuracy threshold
 
-            ##------TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART---------##
 
-            while qcompleted == 2:
-                plzcexp.setAutoDraw(True)
-                if event.getKeys(keyList = ["space"]):
-                    plzcexp.setAutoDraw(False)
-                    qcompleted = 1
-                win.flip()
+                ##----TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART-------##
+
+                if loopscompleted == 2:
+                    short_on_off('plzcexp')
+                    loopscompleted = 1
 
 
-            ##---SHOW INSTRUCTIONS AGAIN IF PTCPT HASN'T REACHED THRESHOLD----##
+                ##-SHOW INSTRUCTIONS AGAIN IF PTCPT HASN'T REACHED THRESHOLD--##
 
-            if qcompleted == 1:
                 tryagain = visual.TextStim(
-                    win = win, text = str(q_acc) + "% of your visual attention responses were correct, which is less than the " + str(qcutoff) + "% threshold. As a reminder, when the target appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + " arrow key for the respective square. If you do not see a little square, indicate this by not pressing any button.\n\nPlease press the space bar to try again.",
-                    units = 'deg', height = 1, wrapWidth = 20)
-                continueRoutine_q = True
+                    win = win, text = str(rep_acc) + "% of your " + task_text + " responses were correct, which is less than the " + str(globals()["{0}cutoff".format(abbr)]) + "% threshold. As a reminder" + task_reminder, units = 'deg', height = 1, wrapWidth = 20)
+
                 short_on_off('tryagain')
 
-                startThresh += .2 # increases opacity of starting opacity each they miss accuracy threshold
+            acclist = []
 
-        elif rep == 0 or rep == 2:
-            q_acc = "break out of while after one run-through"
-            if rep == 2:
-                blocks = blocksreal
-                np.random.shuffle(randomseq) # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
+        if rep == 2:
+            rep_acc = "break out of while after one run-through"
+            blocks = blocksreal
+            np.random.shuffle(randomseq) # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
 
-                continueRoutineInst = True
-                advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
-                while continueRoutineInst:
-                    if event.getKeys(keyList = ["space"]):
-                        advance += 1
-                    elif event.getKeys(keyList = ["b"]):
-                        if advance > 0:
-                            advance -= 1
-                    if advance == 0:
-                        main_prev.setAutoDraw(False)
-                        welcmmain.setAutoDraw(True)
-                    elif advance == 1:
-                        welcmmain.setAutoDraw(False)
-                        main_prev.setAutoDraw(True)
-                    else:
-                        main_prev.setAutoDraw(False)
-                        continueRoutineInst = False
+            continueRoutineInst = True
+            advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
+            while continueRoutineInst:
+                if event.getKeys(keyList = ["space"]):
+                    advance += 1
+                elif event.getKeys(keyList = ["b"]):
+                    if advance > 0:
+                        advance -= 1
+                if advance == 0:
+                    main_prev.setAutoDraw(False)
+                    welcmmain.setAutoDraw(True)
+                elif advance == 1:
+                    welcmmain.setAutoDraw(False)
+                    main_prev.setAutoDraw(True)
+                else:
+                    main_prev.setAutoDraw(False)
+                    continueRoutineInst = False
 
-                    win.flip()
+                win.flip()
 
         blockdelay()
 
 
         for block in list(range(blocks)):
         # until the 'if block > 0' line, sets the number of trials for each run through the upcoming for loop
-            if rep == 0:
-                trials = list(range(ptrials))
-                pacclist = []
-            elif rep == 1:
-                trials = data.QuestHandler(startVal = startThresh, startValSd = .23,
-                    pThreshold = acc_aim, gamma = 0.05,
-                    nTrials = qtrials, minVal = .01, maxVal = 4)
-                qacclist = []
+            if rep == 0 or rep == 1:
+                if rep == 0:
+                    trials = list(range(ptrials))
+                elif rep == 1:
+                    trials = data.QuestHandler(startVal = startThresh, startValSd = .23,
+                        pThreshold = acc_aim, gamma = 0.05,
+                        nTrials = qtrials, minVal = .01, maxVal = 4)
             elif rep == 2:
                 startingtrial = block * trialsperblock
                 trials = list(range(startingtrial, startingtrial + trialsperblock)) # shift trials from qwest/practice to total trials / blocks
@@ -709,7 +719,7 @@ for rep in list(range(3)):
                             check_correct((key == ['nope'] and trialopacity == 0) or (key[0] == main_keys[0] and lil_side == -1) or (key[0] == main_keys[1] and lil_side == 0) or (key[0] == main_keys[2] and lil_side == 1))
                             if rep == 1:
                                 trials.addResponse(acc)
-                                qacclist.append(acc) # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
+                                acclist.append(acc) # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
 
 
                     event.clearEvents()     # Clear the previously pressed keys; too-early key presses will automatically register as incorrect
@@ -827,7 +837,7 @@ for rep in list(range(3)):
                             else:
                                 check_correct(correct_wmarith())
                                 if rep == 0:
-                                    pacclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
+                                    acclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
 
 
                         ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
@@ -861,12 +871,11 @@ for rep in list(range(3)):
                 ])
                 thisExp.nextEntry()
 
-            if rep == 0:
-                p_acc = round(np.mean(pacclist) * 100)
-            elif rep == 1:
-                q_opacity = trials.mean()
-                q_acc = round(np.mean(qacclist) * 100)
-                qcompleted += 1
+            if rep == 0 or rep == 1:
+                rep_acc = int(np.mean(acclist) * 100)
+                loopscompleted += 1
+                if rep == 1:
+                    q_opacity = trials.mean()
 
 
 
