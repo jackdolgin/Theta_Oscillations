@@ -47,7 +47,7 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 ##--------------------------SETUP THE WINDOW----------------------------------##
 
 win = visual.Window(
-    size = (1024, 768), color = [.15, .15, .15], fullscr = False,
+    size = (1024, 768), color = [.15, .15, .15], fullscr = True,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
@@ -60,15 +60,6 @@ main_keys = ["left", "down", "right"]
 wm_arith_keys = ["s", "S", "d", "D"]
 
 task = int(expInfo['session'])
-
-if task == 3:
-    num_to_word = "three"
-    other_squares_instr = "in the second big square on the screen."
-    absent_instructions = ""
-elif task == 2 or task == 4:
-    num_to_word = "two"
-    other_squares_instr = "with 50% probability in each of the other two squares."
-    absent_instructions =  " There are three possible locations for these big squares, and so one of the big squares will be \'absent\' per trial."
 
 
 
@@ -192,7 +183,7 @@ wmarith_freq = .2
 wmarith_trials = int(total_trials * wmarith_freq)
 no_wmarith_trials = total_trials - wmarith_trials
 
-ptrials = 2
+ptrials = 20
 qtrials = 30
 pcutoff = 70
 qcutoff = 35
@@ -231,11 +222,11 @@ d_x = d["x_list"]
 d_y = d["y_list"]
 d_o = d["o_list"]
 
-def peat_intervals(x, y):
-    return np.repeat(x, intervals * y) # repeat each location of the cue/target (`x`) `y` interval sets
+def peat_intervals(p, q):
+    return np.repeat(p, intervals * q) # repeat each location of the cue/target (`p`) `q` interval sets
 
-def peat_catch(x, y):
-    return np.repeat(x * y, int(catchtrials / (3 * y))) # repeat catch trials for `x` number of trials
+def peat_catch(p, q):
+    return np.repeat(p * q, int(catchtrials / (3 * q))) # repeat catch trials for `p` number of trials
 
 target_x = np.concatenate([peat_intervals(list(np.repeat(d_x, 2)) + d_x + d_x, 1), peat_catch(d_x, 1)])
 
@@ -247,13 +238,13 @@ target_y = np.concatenate([peat_intervals(list(np.repeat(d_y, 2)) + d_y + d_y, 1
 
 absent_list = np.concatenate([most_inv("o", "val"), most_inv("o", "mixed_inv"), peat_catch(d_o[::-1], 2)])
 intervals_range = list(range(0, intervals * stagger, stagger))
-lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for x in list(range(reps))])) # randomizes order of CTI's for each set of 48; so all 48 appear before the next set, but the order for each 48 is random from set to set
+lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for i in list(range(reps))])) # randomizes order of CTI's for each set of 48; so all 48 appear before the next set, but the order for each 48 is random from set to set
 
 if catchtrials > intervals:  # spaces out when the lilsquare comes on after the bulge for catch trials
-    catch_timing = [round(x * intervals * 1.0 / (catchtrials - intervals)) for x in list(range(0, (catchtrials - intervals)))]
+    catch_timing = [round(i * intervals * 1.0 / (catchtrials - intervals)) for i in list(range(0, (catchtrials - intervals)))]
     catch_timing += list(range(0, intervals * stagger, stagger))
 else:
-    catch_timing = [round(x * intervals * 1.0 / (catchtrials)) for x in list(range(0, (catchtrials)))]
+    catch_timing = [round(i * intervals * 1.0 / (catchtrials)) for i in list(range(0, (catchtrials)))]
 np.random.shuffle(catch_timing)
 
 def my_randomize():
@@ -279,9 +270,9 @@ for j in range(total_trials - len(sumlist)):
     createsums(0)
     corrlist.append(True)
 
-def check_correct(x):
+def check_correct(q):
     global acc, soundp, continueRoutine
-    if x:
+    if q:
         acc = 1
         soundp = soundfiles[0]
     else:
@@ -351,35 +342,28 @@ bulge = create_square(square_size * 1.1, (0, 0), shapecolor)
 
 lilsquare = create_square(lilsize, (0, 0), lilcolor)
 
-def load_diagrams(r, s):
-    return visual.ImageStim(win = win, image = os.path.join('stimuli',
-        'task_diagram' + str(task) + str(r) + s + '.png'),
-        pos = (.54, 0), size = (.8, 1), texRes = 256)
-
 
 ##-------------------------------INSTRUCTION SCREEN---------------------------##
 
 if task == 3:
     num_to_word = "three"
-    other_squares_instr = "in the second big square on the screen."
-    absent_instructions = ""
     inst4_help1 = ""
     inst4_help2 = ""
 
-
 elif task == 2 or task == 4:
     num_to_word = "two"
-    other_squares_instr = "with 50% probability in each of the other two squares."
-    absent_instructions =  " There are three possible locations for these big squares, and so one of the big squares will be \'absent\' per trial."
-    inst4_help1 = " in three possible locations"
+    inst4_help1 = "in three possible locations"
     inst4_help2 = " Those two locations will vary from trial to trial."
 
-def create_inst(t):
-    return visual.TextStim(win = win, text = t, units = 'deg', pos = (0, 0),
+left_inst = -8
+
+def create_inst(x, t):
+    return visual.TextStim(win = win, text = t, units = 'deg', pos = (x, 0),
         height = 1, wrapWidth = 18)
 
 def continue_goback(s):
     return "\n\nPress space to " + s + " or \"B\" to go back."
+
 
 if task == 4:
     wm_arith_task = "memory"
@@ -391,60 +375,60 @@ elif task == 2 or task == 3:
     inst7_text = "Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
 
 
-inst1 = create_inst("This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
+inst1 = create_inst(0, "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
 
-inst2 = create_inst("During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
+inst2 = create_inst(left_inst, "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
 
-inst3 = create_inst("The attention task will have three phases." + continue_goback("continue"))
+inst3 = create_inst(0, "The attention task will have three phases." + continue_goback("continue"))
 
-inst4 = create_inst("In the first phase of trials, " + num_to_word + " squares " + inst4_help1 + " will appear." + inst4_help2 + continue_goback("continue"))
+inst4 = create_inst(left_inst, "In the first phase of trials, " + num_to_word + " squares " + inst4_help1 + " will appear." + inst4_help2 + continue_goback("continue"))
 
-inst5 = create_inst("Next, a cue that bulges around one of the squares will appear and indicate with " + str(int(validity * 100)) + "% likelihood which square the target (the next phase) will appear in." + continue_goback("continue"))
+inst5 = create_inst(left_inst, "Next, a cue that bulges around one of the squares will appear and indicate with " + str(int(validity * 100)) + "% likelihood which square the target (the next phase) will appear in." + continue_goback("continue"))
 
-inst6 = create_inst("Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + u" arrow key for the respective square. If you do not see a target, indicate this by not pressing any button." + continue_goback("continue"))
+inst6 = create_inst(left_inst, "Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + u" arrow key for the respective square. If you do not see a target, indicate this by not pressing any button." + continue_goback("continue"))
 
-inst7 = create_inst(inst7_text)
+inst7 = create_inst(left_inst, inst7_text)
 
-inst8 = create_inst(u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first block, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial." + continue_goback("continue"))
+inst8 = create_inst(0, u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first block, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial." + continue_goback("begin"))
 
-secondpractice = create_inst("In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
-
-plzcexp = create_inst("Please see the experimenter.")
-
-welcmmain = create_inst("Welcome to the beginning of the main experiment. This experiment will last about 50 minutes. It will feature trials split among " + str(blocksreal - 1) + " breaks (which will be self-timed, so you can break as long as you'd like).\n\nPress space to continue.")
-
-main_prev = create_inst("The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"))
-
-thanks = create_inst("Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.")
-
-
-def stim_draw(j, k, m, n, p):
-    globals()[(j + str(k) + "{0}" + n).format(str(m))].setAutoDraw(p)
-
-def inst_loop(q):
-    p = (inst for inst in list(range(1, 9)) if inst != q)
-    for i in p:
-        try:
-            stim_draw("inst", "", i, "", False)
-            stim_draw("task_diagram", task, i, "", False)
-            stim_draw("task_diagram", task, i, "_2", False)
-        except:
-            pass
-
-    try:
-        stim_draw("inst", "", q, "", True)
-        stim_draw("inst", task, q, "", True)
-        stim_draw("inst", task, q, "_2", True)
-    except:
-        pass
+wm_probe_text = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
 
 wmarith_probe = visual.TextStim(
     win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 20)
 
-inst12 = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
+secondpractice = create_inst(0, "In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
 
-def rep_acc():
-    return globals()["{0}_acc".format(abbr)]
+plzcexp = create_inst(0, "Please see the experimenter.")
+
+welcmmain = create_inst(0, "Welcome to the beginning of the main experiment. This experiment will last about 50 minutes. It will feature trials split among " + str(blocksreal - 1) + u" breaks (which will be self-timed, so you can break as long as you’d like).\n\nPress space to continue.".encode('utf-8').decode('utf-8'))
+
+main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"))
+
+thanks = create_inst(0, "Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.")
+
+
+##--------------------------PREPARE INSTRUCTION DIAGRAMS----------------------##
+
+diagrams_inst = [2] + list(range(4, 8))
+
+def load_diagrams(r):
+    globals()["task_diagram" + str(r)] = visual.ImageStim(win = win, image = os.path.join('stimuli', num_to_word +'_objects', 'task_diagram' + str(r) + '.png'),pos = (.54, 0), size = (.8, 1), texRes = 256)
+
+[load_diagrams(i) for i in diagrams_inst]
+
+def draw(j, k, m):
+    globals()[(j + "{0}").format(str(k))].setAutoDraw(m)
+
+def inst_loop(q):
+    s = (inst for inst in list(range(1, 9)) if inst != q)
+    for i in s:
+        draw("inst", i, False)
+        if i in diagrams_inst:
+            draw("task_diagram", i, False)
+    draw("inst", q, True)
+    if q in diagrams_inst:
+        draw("task_diagram", q, True)
+
 
 
 
@@ -488,8 +472,8 @@ while advance < 8:
         inst_loop(7)
     elif advance == 7:
         inst_loop(8)
-    else:
-        inst_loop(9)
+    elif advance == 8:
+        inst8.setAutoDraw(False)
 
     win.flip()
 
@@ -800,7 +784,7 @@ for rep in list(range(3)):
                     lenkey_wmarith = 0
 
                     if task == 4:
-                        my_inst = inst12
+                        my_inst = wm_probe_text
                         def correct_wmarith():
                             return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
                     elif task == 2 or task == 3:
@@ -836,7 +820,7 @@ for rep in list(range(3)):
 
                             else:
                                 check_correct(correct_wmarith())
-                                if rep == 0:
+                                if rep == 0 and trial > 10:
                                     acclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
 
 
