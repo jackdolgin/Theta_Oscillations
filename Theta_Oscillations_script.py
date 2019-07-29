@@ -309,11 +309,14 @@ np.random.shuffle(randomseq)
 def big_opacity(s):
     return globals()["square_{0}".format(square_absent)].setOpacity(s)
 
+def run_wm_arith():
+    return (expmatrix[9][randomseq[trial]] or rep == 0) and blocktrialcount > 1  # or rep == 0 means that for any trial in rep == 0 (practice trials) there will be a wm/arith task on the screen; blocktrialcount > 1 means it can't be the first trial of the block
+
 def save_data(r, s):
     for i in s:
         if not r:
             resp = i[1]
-        elif expmatrix[9][randomseq[trial]]:
+        elif run_wm_arith():
             resp = globals()[i[1]]
         else:
             resp = "NA"
@@ -368,7 +371,7 @@ def continue_goback(s):
 if task == 4:
     wm_arith_task = "memory"
     a_or_an = "a"
-    inst7_text = "Memory trials will ask you whether the third location in the last two trials (where there was no square on the screen) was the same location (press \"" + wm_arith_keys[1] + "\") or whether it differed (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
+    inst7_text = "Memory trials will ask you whether the absent location in the last two trials (where there was no square on the screen) was the same location (press \"" + wm_arith_keys[1] + "\") or whether it differed (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
 elif task == 2 or task == 3:
     wm_arith_task = "arithmetic"
     a_or_an = "an"
@@ -377,7 +380,7 @@ elif task == 2 or task == 3:
 
 inst1 = create_inst(0, "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
 
-inst2 = create_inst(left_inst, "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. These visual trials are covert attention tasks, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
+inst2 = create_inst(left_inst, "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. This is a covert attention task, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
 
 inst3 = create_inst(0, "The attention task will have three phases." + continue_goback("continue"))
 
@@ -389,12 +392,14 @@ inst6 = create_inst(left_inst, "Finally, a target will appear on most trials, in
 
 inst7 = create_inst(left_inst, inst7_text)
 
-inst8 = create_inst(0, u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first block, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial." + continue_goback("begin"))
+inst8 = create_inst(0, u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first set, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial.\n\nAs a reminder, indicate which square the target was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + " arrow key for the respective square" + continue_goback("begin"))
+
+# inst9 = create_inst(0, "")
 
 wm_probe_text = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
 
 wmarith_probe = visual.TextStim(
-    win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 20)
+    win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 24)
 
 secondpractice = create_inst(0, "In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
 
@@ -412,7 +417,7 @@ thanks = create_inst(0, "Thank you so much for your participation! Let the exper
 diagrams_inst = [2] + list(range(4, 8))
 
 def load_diagrams(r):
-    globals()["task_diagram" + str(r)] = visual.ImageStim(win = win, image = os.path.join('stimuli', num_to_word +'_objects', 'task_diagram' + str(r) + '.png'),pos = (.54, 0), size = (.8, 1), texRes = 256)
+    globals()["task_diagram" + str(r)] = visual.ImageStim(win = win, image = os.path.join('stimuli', "task_" + str(task), 'task_diagram' + str(r) + '.png'),pos = (.54, 0), size = (.8, 1), texRes = 256)
 
 [load_diagrams(i) for i in diagrams_inst]
 
@@ -585,6 +590,8 @@ for rep in list(range(3)):
 
                     blockdelay()
 
+            blocktrialcount = 0 # count number of trials in the block to not present wm/arith probe on the first trial
+
 
 
             ##----------------------------------------------------------------##
@@ -597,6 +604,7 @@ for rep in list(range(3)):
                 cross.setAutoDraw(True) # cross begins on screen; is located outside of while loop since it is on screen the entire trial
                 lenkeylist = 0
                 overalltime = globalClock.getTime()
+                blocktrialcount += 1
 
 
                 ##----------------------SET TARGET & OPACITY--------------------##
@@ -772,14 +780,12 @@ for rep in list(range(3)):
 
                 if task == 4:
                     penultimate_absent = expmatrix[8][randomseq[trial - 1]]
-                    last_absent = expmatrix[8][randomseq[trial]]
-                    corr_wmarith_choice = (penultimate_absent == last_absent)
+                    corr_wmarith_choice = (penultimate_absent == square_absent)
                 elif task == 2 or task == 3:
                     penultimate_absent = "NA"
-                    last_absent = "NA"
                     corr_wmarith_choice = expmatrix[11][randomseq[trial]]
 
-                if expmatrix[9][randomseq[trial]] or rep == 0: # or rep == 0 means that for any trial in rep == 0 (practice trials) there will be a wm/arith task on the screen
+                if run_wm_arith():
                     for_start()
                     lenkey_wmarith = 0
 
@@ -810,8 +816,8 @@ for rep in list(range(3)):
 
                         if frameN == wmarith_pause:
                             wmarith_probe.setAutoDraw(True)
-                            wmarith_probe.tStart = t
-                            wmarith_probe.frameEnd = frameN
+                            wmarith_probetStart = t
+                            wmarith_probeframeStart = frameN
                         elif frameN == wmarith_total:
                              key = ['nope']
                         if len(key) > 0:
@@ -842,15 +848,15 @@ for rep in list(range(3)):
 
                 ##-------------------RECORD DATA------------------------------##
 
+                key_press = key[0]
                 save_data(True, [
-                    # ['wmarith_probeStartTime', 'wmarith_probe.tStart'],
-                    # ['wmarith_probeStartFrame', 'wmarith_probe.frameStart'],
+                    ['wmarith_probeStartTime', 'wmarith_probetStart'],
+                    ['wmarith_probeStartFrame', 'wmarith_probeframeStart'],
                     ['ButtonPressTime_wmarith', 't'],
-                    # ['Key_wmarith', 'key[0]'],
+                    ['Key_wmarith', 'key_press'],
                     ['false_presses_wmarith', 'lenkey_wmarith'],
                     ['Acc_wmarith', 'acc'],
                     ['PenultimateAbsent', 'penultimate_absent'],
-                    ['LastAbsent', 'last_absent'],
                     ['Corr_wmarith_choice', 'corr_wmarith_choice']
                 ])
                 thisExp.nextEntry()
