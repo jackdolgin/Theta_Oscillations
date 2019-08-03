@@ -1,6 +1,6 @@
 # if (!require(devtools)) install.packages('devtools')
 # if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
-# smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "purrr", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny", "shinyWidgets"))
+# smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny", "shinyWidgets"))
 
 library(utils); library(tidyr); library(dplyr); library(ggplot2); library(DescTools); library(bspec); library(pracma); library(gridExtra); library(data.table); library(tables); library(zoo); library(parallel); library(scales); library(lazyeval); library(stats); library(gdata); library(viridis); library(gginnards); library(shiny); library(shinyWidgets)
 
@@ -12,7 +12,8 @@ ui <- fluidPage(
            column(4, h3( "Data Set, Task, and Graph Choice"), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
            column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Experimental", status = "primary")),
-           column(5, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
+           column(2, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
+           column(2, switchInput("wm_exp", "Working Memory Experiment", labelWidth = 300)),
            column(4, radioGroupButtons("display", choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary"))
            ),
   br(), br(), br(), br(), 
@@ -69,7 +70,11 @@ server <- function(input, output, session) {
     if(input$ext_objects == "2-object Task") 301:324 else 401:427
   } else {
     blocksize <- 80
-    if(input$ext_objects == "2-object Task") c(501:522, 524:534) else c(601:631)}
+    if (input$wm_exp){
+      701:730
+    } else {
+      if(input$ext_objects == "2-object Task") c(501:522, 524:534) else c(601:631)}
+    }
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     

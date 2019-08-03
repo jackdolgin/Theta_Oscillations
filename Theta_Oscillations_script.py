@@ -179,7 +179,7 @@ validity = .7
 extra_valids = int(validity * liltrials - ((reps - (6)) * intervals)) / 3 # for our desired percent of valid trials, some `reps` had to include both valid and invalid trials-and then we randomized the 48 intervals assigned to these two 'mixed' reps=
 extra_invalids = intervals - extra_valids
 
-wmarith_freq = .2
+wmarith_freq = .3
 wmarith_trials = int(total_trials * wmarith_freq)
 no_wmarith_trials = total_trials - wmarith_trials
 
@@ -583,10 +583,7 @@ for rep in list(range(3)):
                         win = win, text = "You've reached break " + str(block) + " of " + str(blocks-1) + ". This break is self-timed, so whenever you're ready press spacebar to continue the study.\n\nAs a reminder, 75% of little squares will be on the same side as the frame.",
                         units = 'deg', height = 1, wrapWidth = 20)
 
-                    break_message.setAutoDraw(True)
-                    if event.getKeys(keyList = ["space"]):
-                        continueRoutineInst = False
-                        break_message.setAutoDraw(False)
+                    short_on_off('break_message')
 
                     blockdelay()
 

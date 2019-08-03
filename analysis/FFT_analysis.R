@@ -6,11 +6,11 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec",
               "scales", "lazyeval", "stats", "gdata", "viridis", "gginnards"))
 
 # Main function begins (encompasses other functions)
-main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
-                          clumps, dep_var, pval, shuff, trends, smooth_method,
-                          win_func, xaxisvals, duration, attn_filter,
-                          catch_floor, side_bias, pre_range, post_range,
-                          block_range, miniblock_range, CTI_range){
+main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
+                          samp_per, clumps, dep_var, pval, shuff, trends,
+                          smooth_method, win_func, xaxisvals, duration,
+                          attn_filter, catch_floor, side_bias, pre_range,
+                          post_range, block_range, miniblock_range, CTI_range){
   
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means
                          Acc_postfilter, CatchAcc)                              # don't have to type them out every time we use them for grouping
@@ -20,9 +20,14 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
     if(ext_objects == 2) 301:324 else 401:427
   } else {
     blocksize <- 80
-    if(ext_objects == 2) c(501:522, 524:534) else 601:631}
+    if (wm_exp){
+      701:730
+    } else {
+      if(ext_objects == 2) c(501:522, 524:534) else 601:631
+    }
+  }
   
-  dep_var_abbr <- as.name(ifelse(dep_var == "Accuracy", "Acc", "RT"))           # Converts character to name/symbol so we can refer to it as a column using tidy
+  dep_var_abbr <- as.name(ifelse(dep_var == "Accuracy", "Acc", "RT"))           # Converts character to name/symbol so we can refer to it as a column using tidycom
   
   dem_df <- fread(file.path("data", "Demographics.csv")) %>%
     mutate_at(vars(SubjID), as.numeric)
@@ -57,7 +62,8 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
                                   CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
              Stim_Sides = case_when(iso_sides ~ paste(CorrSide, Stim_Sides,     # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`
                                                       sep = "_"),               # to include which side of screen target was on,
-                                    TRUE ~ Stim_Sides)) %>%                     # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides` unchanged
+                                    TRUE ~ Stim_Sides)) %>%                     # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides`
+                                                                                # unchanged
       group_by(block) %>%
       mutate(block_acc = mean(Acc)) %>%                                         # Creates column indicating block's mean accuracy
       ungroup() %>%
@@ -72,7 +78,8 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
                                !between(miniblock_avg, miniblock_range[1],      # or miniblock was not in the desired range
                                         miniblock_range[2]), NA, .))) %>%
       mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
-             Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered for `block_range`, unlike `Acc_prefilter`
+             Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered
+                                                                                # for `block_range`, unlike `Acc_prefilter`
       filter(between(Acc_postfilter, post_range[1], post_range[2])) %>%         # Prunes participants whose non-catch, post-block-filtering accuracy is outside of desired range 
       group_by(CTI, Stim_Sides, !!!grouping_cnsts) %>%
       summarise_at(vars(Acc, RT), list(~mean(., na.rm = TRUE))) %>%             # Overwrites `Acc` and `RT` columns according to mean of each combination of `CTI` and `Stim_Sides`
@@ -86,9 +93,11 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
   cmbd <- do.call(rbind, lapply(pcpts, pcpts_combine)) %>%                      # Calls `pcpts_combine` function for argumenet `pcpts`; then combines each participant's dataframe into one
     arrange(Acc_prefilter, participant, Stim_Sides, CTI)
   CTIs <- unique(cmbd$CTI)
-  if (win_func == "Tukey"){ win <- tukeywindow(length(CTIs), .5)} else {        # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will be non-flat
+  if (win_func == "Tukey"){ win <- tukeywindow(length(CTIs), .5)} else {        # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will
+                                                                                # be non-flat
     win <- match.fun(paste0(tolower(win_func), "window"))(length(CTIs))}
-  locations <- unique(cmbd$Stim_Sides)                                          # Creates vector of column names representing sides locations of target in reference to cue (and also potentially side of screen)
+  locations <- unique(cmbd$Stim_Sides)                                          # Creates vector of column names representing sides locations of target in reference to cue (and also
+                                                                                # potentially side of screen)
   pcpts <- unique(cmbd$participant)                                             # Creates vector of remaining participant numbers after `pcpts_combine` filtering
   cmbd_w <- cmbd %>%
     pivot_wider(CTI:CatchAcc, Stim_Sides, values_from = !!dep_var_abbr) %>%
@@ -322,27 +331,64 @@ main_function <- function(dset, display, ext_objects, iso_sides, sbtr, samp_per,
 
 
 # Sets inputs for the `main_function` function
-main_function(display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `Time-Series + FFT by Individual`, `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
+main_function(display = "FFT Across Participants",                              # Either `FFT Across Participants`, `Time-Series Across Participants`, `Time-Series + FFT by Individual`,
+                                                                                # `prelim_table` (lightly analyzed data), and `fft_table` (semi-ready for graphing data)
+              
               dset = "Experimental",                                            # Either `Pilot` for pilot participants or `Experimental` for experimental participants
+              
+              wm_exp = FALSE,                                                   # Either `FALSE` or `TRUE` for working memory participants
+              
               ext_objects = 2,                                                  # `2` corresponds to the two-object task, `3` to the three-object task
-              iso_sides = FALSE,                                                # Either `FALSE` or `TRUE`, which groups by not only valid and invalid but also by the side of the screen for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`, `Left Invalid`)
-              sbtr = FALSE,                                                     # Either `FALSE` or `TRUE`, which subtracts the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently
-              samp_per = round(1 / 60, 4),                                      # Spacing between CTI intevals (in seconds); the data was originally sampled at 1 / 60, but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the `clump` variable groups neighbors but doesn't combine them, keeping the same total number of bins)
-              clumps = 2,                                                       # Number of points to average at each CTI; `1` means this function does nothing, `3` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...
+              
+              iso_sides = FALSE,                                                # Either `FALSE` or `TRUE`, which groups by not only valid and invalid but also by the side of the screen
+                                                                                # for each trial (i.e. going from `Valid` and `Invalid` to `Right Valid`, `Left Valid`, `Right Invalid`,
+                                                                                # `Left Invalid`)
+              
+              sbtr = FALSE,                                                     # Either `FALSE` or `TRUE`, which subtracts the dependent variable values at each CTI (valid - invalid)
+                                                                                # before performing analyses rather than analyzing valid and invalid trials independently
+              
+              samp_per = round(1 / 60, 4),                                      # Spacing between CTI intevals (in seconds); the data was originally sampled at 1 / 60, but one could
+                                                                                # re-sample at a different rate, which would just clump neighboring CTI's together (whereas the `clump`
+                                                                                # variable groups neighbors but doesn't combine them, keeping the same total number of bins)
+              
+              clumps = 2,                                                       # Number of points to average at each CTI; `1` means this function does nothing, `3` means each CTI is the
+                                                                                # average of that CTI and its neighboring CTI's on each sides, etc...
+              
               dep_var = "Accuracy",                                             # Either `Accuracy`or `Response Time`
+              
               pval = .025,                                                      # The p-value to use for drawing the significance cutoff on the graphs
-              shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number slows down the run time
+              
+              shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number
+                                                                                # slows down the run time
+              
               trends = c("Detrending", "Demeaning"),                            # Either `Detrending`, `Demeaning`, both, or an empty vector
+              
               smooth_method = "Loess",                                          # Either `Loess`, `LM`, `GLM`, or `GAM` smoothing methods for the time-series data of individuals
-              win_func = "Tukey",                                               # Choose between the following types of windowing functions: `Tukey`, `Square`, `Hann`, `Welch`, `Triangle`, `Hamming`, `Cosine`, or `Kaiser`
+              
+              win_func = "Tukey",                                               # Choose between the following types of windowing functions: `Tukey`, `Square`, `Hann`, `Welch`,
+                                                                                # `Triangle`, `Hamming`, `Cosine`, or `Kaiser`
+              
               xaxisvals = 15,                                                   # Greatest x-axis value included in graph
+              
               duration = 1,                                                     # Duration (Seconds) Analyzed Including Padding
-              attn_filter = FALSE,                                              # Either `FALSE` or `TRUE`, which prunes any participants who indicated in the post-task questionnaire that they either dozed off at one point or were not fully focused on at least two of the eight blocks (the other options were that they were fully alert on all blocks or fully alert on all but one block)
+              
+              attn_filter = FALSE,                                              # Either `FALSE` or `TRUE`, which prunes any participants who indicated in the post-task questionnaire that
+                                                                                # they either dozed off at one point or were not fully focused on at least two of the eight blocks (the
+                                                                                # other options were that they were fully alert on all blocks or fully alert on all but one block)
+              
               catch_floor = .85,                                                # Prunes participants who perform below this hit rate on catch trials, which featured no target
+              
               side_bias = .2,                                                   #                     whose hit rate at one visual field - another visual field is > `side_bias`
+              
               pre_range = c(.45, .75),                                          #                           unfiltered/scrutinized data is outside of the selected range
+              
               post_range = c(.45, .75),                                         #                           filtered data is outside of the selected range
-              block_range = c(.40, .80),                                        # Interpolates over trials if the average hit rate in that block, every 48 trials, is outside of the select range
-              miniblock_range = c(.40, .80),                                    #                                                          mini-block, every 16 trials which is how often the task difficulty was adjusted to titrate to 65%, is outside this range
+              
+              block_range = c(.40, .80),                                        # Interpolates over trials if the average hit rate in that block, every 48 trials, is outside of the select
+                                                                                # range
+              
+              miniblock_range = c(.40, .80),                                    #                                                          mini-block, every 16 trials which is how often
+                                                                                # the task difficulty was adjusted to titrate to 65%, is outside this range
+              
               CTI_range = c(.3, 1.09)                                           # Filters trials outside this range of CTI bins
 )
