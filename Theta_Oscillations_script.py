@@ -742,7 +742,7 @@ for rep in list(range(3)):
                     thisExp.addData('Trial', -trial)
                 else:
                     thisExp.addData('Trial', trial + 1)
-                    if trialopacity > 0:
+                    if trialopacity != 0:
                         repstaircase.append(acc)
 
                 save_data(False, [
