@@ -614,7 +614,7 @@ for rep in list(range(3)):
                     ptrials += 1
                 else:
                     extracted_opacity = expmatrix[5][randomseq[trial]]
-                    if extracted_opacity > 0:
+                    if extracted_opacity != 0:
                         if noncatch_count > 0 and noncatch_count % running_staircase_length == 0: # checks whether it's been 'running_staircase_length' number of experimental trials since the last resetting of opacity/staircase and therefore time to reset it
                             repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase) # repstaircase is the average accuracy over the last 'running_staircase_length' experimental trials
                             q_opacity += .6 * (acc_aim - repstair_avg) # either increases or decreases the staircase by .6 opacity * the difference between the hoped-for accuracy and the average accuracy on the  last 'running_staircase_length' experimental trials

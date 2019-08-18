@@ -9,8 +9,9 @@ smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec",
 main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
                           samp_per, clumps, dep_var, pval, shuff, trends,
                           smooth_method, win_func, xaxisvals, duration,
-                          attn_filter, catch_floor, side_bias, pre_range,
-                          post_range, block_range, miniblock_range, CTI_range){
+                          attn_filter, catch_floor, side_bias, wm_floor,
+                          pre_range, post_range, block_range, blocks_desired,
+                          miniblock_range, CTI_range){
   
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means
                          Acc_postfilter, CatchAcc)                              # don't have to type them out every time we use them for grouping
@@ -37,46 +38,51 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
   pcpts_combine <- function(pcpt){
     fread(file.path("data", pcpt, paste0(pcpt, ".csv"))) %>%                    # Reads in participant data
       filter(Trial > 0) %>%                                                     # Prunes practice trials
-      mutate(CatchAcc = mean(ifelse(Opacity > 0, NA, Acc), na.rm = TRUE)) %>%   # Creates column indicating mean accuracy for catch trials
+      mutate(Stim_Sides = as.character(
+               ifelse(CorrSide == FlashSide, "Valid", "Invalid")),              # Creates column indicating whether cue was valid or invalid
+             CorrSide = case_when(CorrSide == 1 ~ "Right",                      #                           which side the target appeared on
+                                  CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
+             Stim_Sides = case_when(iso_sides ~ paste(CorrSide, Stim_Sides,     # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`
+                                                      sep = "_"),               # to include which side of screen target was on,
+                                    TRUE ~ Stim_Sides),                         # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides`
+                                                                                # unchanged             
+             CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
+                                   1 / 60), samp_per),
+             block = RoundTo(Trial, blocksize, ceiling) / blocksize,            # Creates column indicating trial's block
+             RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                           RT after target appeared on screen, only for correct trials with an RT > 100 ms
+                         ButtonPressTime - lilsquareStartTime, NA)) %>%
+      mutate_at(vars(Acc, RT), list(~ifelse(block %in% blocks_desired,
+                                            ., NA))) %>%
+      mutate(wm_Acc = ifelse(session == "4", mean(Acc_wmarith, na.rm = TRUE),   # Creates column indicating wm accuracy; na.rm = TRUE because majority of trials lack wm probe, create NA
+                             1),
+             CatchAcc = mean(ifelse(Opacity != 0, NA, Acc), na.rm = TRUE)) %>%  #                           mean accuracy for catch trials
+      filter(CatchAcc >= catch_floor,                                           # Prunes participants whose catch accuracy is below desired threshold
+             Opacity != 0) %>%                                                  #        catch trials     
       group_by(CorrSide) %>%
       mutate(Side_Acc = mean(Acc, na.rm = TRUE)) %>%
       ungroup() %>%
       mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
       left_join(dem_df, by = c("participant" = "SubjID")) %>%
-      filter(CatchAcc >= catch_floor,                                           # Prunes participants whose catch accuracy is below desired threshold
-             grepl(ifelse(attn_filter, "task" , ""), Q9),                       #                     reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
+      filter(grepl(ifelse(attn_filter, "task" , ""), Attentiveness),            # Prunes participants reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
              Side_Diff <= side_bias,                                            #                     whose hit rate at one visual field - another visual field is > `side_bias`
-             Opacity > 0) %>%                                                   #        catch trials             
-      mutate(Acc_prefilter = mean(Acc, na.rm = TRUE),                           # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
-             CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
-                                   1 / 60), samp_per)) %>% 
+             wm_Acc >= wm_floor) %>%                                            #                           working memory task accuracy is < `wm_floor`
+      mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                       # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
       filter(between(Acc_prefilter, pre_range[1], pre_range[2],                 # Prunes participants whose non-catch, pre-block-filtering accuracy is outside of desired range
                      incbounds = TRUE),
-             between(CTI, min(CTI_range), max(CTI_range))) %>%
-      mutate(block = RoundTo(Trial, blocksize, ceiling) / blocksize,            # Creates column indicating trial's block
-             RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,  #                indicating RT after target appeared on screen, only for correct trials with an RT < 100 ms
-                         ButtonPressTime - lilsquareStartTime, NA),
-             Stim_Sides = as.character(
-               ifelse(CorrSide == FlashSide, "Valid", "Invalid")),              #                indicating whether cue was valid or invalid
-             CorrSide = case_when(CorrSide == 1 ~ "Right",                      #                indicating which side the target appeared on
-                                  CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
-             Stim_Sides = case_when(iso_sides ~ paste(CorrSide, Stim_Sides,     # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`
-                                                      sep = "_"),               # to include which side of screen target was on,
-                                    TRUE ~ Stim_Sides)) %>%                     # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides`
-                                                                                # unchanged
+             between(CTI, min(CTI_range), max(CTI_range))) %>%                  #        trials outside of desired CTI range
       group_by(block) %>%
       mutate(block_acc = mean(Acc)) %>%                                         # Creates column indicating block's mean accuracy
       ungroup() %>%
       mutate(rown = row_number(),
-             miniblock = RoundTo(rown, 16, ceiling) / 16) %>%                   #                           trial's mini-block (every 16 trials the opacity was readjusted)
+             miniblock = RoundTo(rown, 16, ceiling) / 16) %>%                   #                           trial's mini-block (every 16 non-catch trials the opacity was readjusted)
       group_by(miniblock) %>%
       mutate(miniblock_avg = mean(Acc)) %>%
       ungroup() %>%
       mutate_at(vars(Acc, RT),
-                list(~ifelse(!between(block_acc, block_range[1],                # Changes `Acc` and `RT` column values to NA if trial's
-                                      block_range[2]) |                         # block accuracy outside of `block_range`
-                               !between(miniblock_avg, miniblock_range[1],      # or miniblock was not in the desired range
-                                        miniblock_range[2]), NA, .))) %>%
+                list(~ifelse(between(block_acc, block_range[1],                 # Changes `Acc` and `RT` column values to NA if trial's
+                                      block_range[2]) &                         # block accuracy outside of `block_range`
+                             between(miniblock_avg, miniblock_range[1],         # or miniblock was not in the desired range
+                                      miniblock_range[2]), ., NA))) %>%         # or block was not in `blocks_desired`
       mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
              Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered
                                                                                 # for `block_range`, unlike `Acc_prefilter`
@@ -85,8 +91,9 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
       summarise_at(vars(Acc, RT), list(~mean(., na.rm = TRUE))) %>%             # Overwrites `Acc` and `RT` columns according to mean of each combination of `CTI` and `Stim_Sides`
       arrange(CTI) %>%
       group_by(Stim_Sides) %>%
-      mutate_at(vars(Acc, RT), list(~na.approx(., na.rm = FALSE, rule = 2))) %>%
-      mutate_at(vars(Acc, RT), list(~rollapply(., clumps + 1, mean,
+      mutate_at(vars(Acc, RT), list(~na.approx(., na.rm = FALSE, rule = 2))) %>%# If any combination of `CTI` and `Stim_Sides` has only NA values, it takes on the average of its
+                                                                                # neighboring CTI with same `Stim_Sides`
+      mutate_at(vars(Acc, RT), list(~rollapply(., clumps + 1, mean,             # Averages each CTI with neighbors
                                                partial = TRUE)))
   }
   
@@ -101,7 +108,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
   pcpts <- unique(cmbd$participant)                                             # Creates vector of remaining participant numbers after `pcpts_combine` filtering
   cmbd_w <- cmbd %>%
     pivot_wider(CTI:CatchAcc, Stim_Sides, values_from = !!dep_var_abbr) %>%
-    arrange(Acc_prefilter, participant, CTI) %>%
+    arrange(Acc_prefilter, participant, CTI) %>%                                # Sets the order for individuals' plots
     group_by(participant) %>%
     mutate_at(vars(locations), list(~na.approx(., na.rm = FALSE, rule = 2)))
   
@@ -286,7 +293,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
         mutate(samp_shuff = x)
     }
     
-    amps_shuff <- do.call(rbind, lapply(1:shuff, shuffle)) %>%
+    amps_shuff <- do.call(rbind, mclapply(1:shuff, shuffle)) %>%
       amplitude(shuff) %>%
       group_by(Hz, samp_shuff) %>%
       summarise_at(vars(locations), mean) %>%
@@ -336,7 +343,7 @@ main_function(display = "FFT Across Participants",                              
               
               dset = "Experimental",                                            # Either `Pilot` for pilot participants or `Experimental` for experimental participants
               
-              wm_exp = FALSE,                                                   # Either `FALSE` or `TRUE` for working memory participants
+              wm_exp = TRUE,                                                   # Either `FALSE` or `TRUE` for working memory participants
               
               ext_objects = 2,                                                  # `2` corresponds to the two-object task, `3` to the three-object task
               
@@ -356,7 +363,7 @@ main_function(display = "FFT Across Participants",                              
               
               dep_var = "Accuracy",                                             # Either `Accuracy`or `Response Time`
               
-              pval = .025,                                                      # The p-value to use for drawing the significance cutoff on the graphs
+              pval = .05,                                                       # The p-value to use for drawing the significance cutoff on the graphs
               
               shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number
                                                                                 # slows down the run time
@@ -379,15 +386,19 @@ main_function(display = "FFT Across Participants",                              
               catch_floor = .85,                                                # Prunes participants who perform below this hit rate on catch trials, which featured no target
               
               side_bias = .2,                                                   #                     whose hit rate at one visual field - another visual field is > `side_bias`
+
+              wm_floor = .7,                                                   #                           working memory task accuracy is < `wm_floor`
+                            
+              pre_range = c(.45, .85),                                          #                           unfiltered/scrutinized data is outside of the selected range
               
-              pre_range = c(.45, .75),                                          #                           unfiltered/scrutinized data is outside of the selected range
-              
-              post_range = c(.45, .75),                                         #                           filtered data is outside of the selected range
+              post_range = c(.45, .85),                                         #                           filtered data is outside of the selected range
               
               block_range = c(.40, .80),                                        # Interpolates over trials if the average hit rate in that block, every 48 trials, is outside of the select
                                                                                 # range
               
-              miniblock_range = c(.40, .80),                                    #                                                          mini-block, every 16 trials which is how often
+              blocks_desired = 1:8,                                             #                                 block is not in the `blocks_desired`
+              
+              miniblock_range = c(.20, .80),                                    #                                 average hit rate in that mini-block, every 16 trials which is how often
                                                                                 # the task difficulty was adjusted to titrate to 65%, is outside this range
               
               CTI_range = c(.3, 1.09)                                           # Filters trials outside this range of CTI bins
