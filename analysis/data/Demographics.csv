@@ -1,7 +1,7 @@
-Progress,Duration (in seconds),Finished,SubjID,Q9
-100,26,TRUE,301,
-100,27,TRUE,302,
-100,29,TRUE,303,
+Progress,Duration (in seconds),Finished,SubjID,Attentiveness
+100,26,TRUE,301,Unavailable
+100,27,TRUE,302,Unavailable
+100,29,TRUE,303,Unavailable
 100,35,TRUE,304,I was fully alert the entire task
 100,67,TRUE,305,I was fully alert the entire task
 100,57,TRUE,306,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
@@ -72,10 +72,12 @@ Progress,Duration (in seconds),Finished,SubjID,Q9
 100,95,TRUE,520,I was fully alert the entire task
 100,70,TRUE,521,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
 100,59,TRUE,522,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
+Unavailable,Unavailable,Unavailable,523,Unavailable
 100,38,TRUE,524,I was fully alert the entire task
 100,135,TRUE,525,I was fully alert the entire task
 100,37,TRUE,526,I was fully alert the entire task
 100,39,TRUE,527,I was fully alert the entire task
+Unavailable,Unavailable,Unavailable,528,Unavailable
 100,85,TRUE,529,I was fully alert the entire task
 100,70,TRUE,530,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,73,TRUE,531,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
@@ -87,8 +89,10 @@ Progress,Duration (in seconds),Finished,SubjID,Q9
 100,65,TRUE,603,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
 100,68,TRUE,604,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,117,TRUE,605,I was fully alert the entire task
+Unavailable,Unavailable,Unavailable,606,Unavailable
 100,56,TRUE,607,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
 100,63,TRUE,608,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+Unavailable,Unavailable,Unavailable,609,Unavailable
 100,48,TRUE,610,I was fully alert the entire task
 100,33,TRUE,611,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,48,TRUE,612,I was fully alert the entire task
@@ -102,21 +106,42 @@ Progress,Duration (in seconds),Finished,SubjID,Q9
 100,69,TRUE,620,I was fully alert the entire task
 100,71,TRUE,621,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
 100,38,TRUE,622,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
+100,66,TRUE,623,I was fully alert the entire task
 100,52,TRUE,624,I was fully alert the entire task
 100,73,TRUE,625,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
-100,66,TRUE,623,I was fully alert the entire task
 100,39,TRUE,626,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
 100,100,TRUE,627,I was fully alert the entire task
 100,71,TRUE,628,I was fully alert the entire task
 100,44,TRUE,629,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,75,TRUE,630,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,49,TRUE,631,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
-100,59,TRUE,703,I was fully alert the entire task
 100,NA,TRUE,701,I'd prefer to not respond
 100,NA,TRUE,702,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,59,TRUE,703,I was fully alert the entire task
 100,74,TRUE,704,I was fully alert the entire task
 100,40,TRUE,705,I was fully alert the entire task
 100,56,TRUE,706,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,50,TRUE,707,I'd prefer to not respond
 100,61,TRUE,708,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
 100,46,TRUE,709,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+Unavailable,Unavailable,Unavailable,710,Unavailable
+Unavailable,Unavailable,Unavailable,711,Unavailable
+100,64,TRUE,712,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,82,TRUE,713,I was fully alert the entire task
+100,64,TRUE,714,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,63,TRUE,715,I was fully alert the entire task
+Unavailable,Unavailable,Unavailable,716,Unavailable
+100,58,TRUE,717,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,60,TRUE,718,I was fully alert the entire task
+100,116,TRUE,719,I was fully alert the entire task
+100,46,TRUE,720,I was fully alert the entire task
+100,46,TRUE,721,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,57,TRUE,722,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,54,TRUE,723,I was fully alert the entire task
+100,69,TRUE,724,I might have dozed off slightly at one point
+100,70,TRUE,725,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,47,TRUE,726,I was fully alert the entire task
+100,126,TRUE,727,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,82147,TRUE,728,I was not fully alert on at least two of the eight blocks (a quarter of all trials)
+100,89,TRUE,729,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
+100,44,TRUE,730,"I was fully alert most of the task, with the except of maybe at most one of the eight blocks"
