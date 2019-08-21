@@ -45,7 +45,8 @@ ui <- fluidPage(
   ),
   column(4, br(),
          numericInput("side_bias", "Side Bias Ceiling", min = .01, max = .99, value = .2), helpText("Filter out participants whose hit rate at one visual field - another visual field is > this ceiling"), br(),
-         numericInput("wm_floor", "Working Memory Accuracy Floor", min = .01, max = .99, value = .7), helpText("Filter out participants whose working memory task accuracy is < this cutoff")
+         numericInput("wm_floor", "Working Memory Accuracy Floor", min = .01, max = .99, value = .7), helpText("Filter out participants whose working memory task accuracy is < this cutoff"), br(),
+         numericInput("invalid_floor", "Invalid Trial Accuracy Floor", min = .01, max = .99, value = .15), helpText("Filter out participants whose accuracy on invalid trials is < this cutoff")
   ),
   column(4, br(),
          sliderInput("pre_range", "Pre-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .85)), helpText("Remove participants whose unfiltered accuracy is outside this range"), br(),
@@ -89,25 +90,26 @@ server <- function(input, output, session) {
         filter(Trial > 0) %>%                                                   # Prunes practice trials
         mutate(Stim_Sides = as.character(
                  ifelse(CorrSide == FlashSide, "Valid", "Invalid")),            # Creates column indicating whether cue was valid or invalid
-               CorrSide = case_when(CorrSide == 1 ~ "Right",                    #                           which side the target appeared on
-                               CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
-               Stim_Sides = case_when(input$iso_sides ~ paste(CorrSide, Stim_Sides,  # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`
-                                                   sep = "_"),                  # to include which side of screen target was on,
-                                 TRUE ~ Stim_Sides),                            # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides`
-                                                                                # unchanged             
                CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
                                 1 / 60), input$samp_per),
                block = RoundTo(Trial, blocksize, ceiling) / blocksize,          # Creates column indicating trial's block
                RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,#                           RT after target appeared on screen, only for correct trials with an RT > 100 ms
                       ButtonPressTime - lilsquareStartTime, NA)) %>%
-        mutate_at(vars(Acc, RT), list(~ifelse(block %in% input$blocks_desired,
+        mutate_at(vars(Acc, RT), list(~ifelse(block %in% input$blocks_desired,  # Converts trials' Acc and RT to NA if they are not in a desired block
                                               ., NA))) %>%
-        mutate(
-          wm_Acc = ifelse(session == "4", mean(Acc_wmarith, na.rm = TRUE),      # Creates column indicating wm accuracy; na.rm = TRUE because majority of trials lack wm probe, create NA
-                               1),
+        mutate(wm_Acc = ifelse(session == "4",                                  # Creates column indicating wm accuracy; na.rm = TRUE because majority of trials lack wm probe, create NA
+                               mean(Acc_wmarith, na.rm = TRUE), 1),
                CatchAcc = mean(ifelse(Opacity != 0, NA, Acc), na.rm = TRUE)) %>%#                           mean accuracy for catch trials
         filter(CatchAcc >= input$catch_floor,                                   # Prunes participants whose catch accuracy is below desired threshold
-               Opacity != 0) %>%                                                #       catch trials     
+               Opacity != 0) %>%                                                #        catch trials
+        filter(mean(Acc[Stim_Sides == "Invalid"],                                 #        participants whose invalid trial accuracy is...
+                    na.rm = TRUE) >= input$invalid_floor) %>%                           #        ...below desired threshold
+        mutate(CorrSide = case_when(CorrSide == 1 ~ "Right",                    #                           which side the target appeared on
+                               CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
+               Stim_Sides = case_when(input$iso_sides ~ paste(CorrSide, Stim_Sides,  # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`
+                                                              sep = "_"),           # to include which side of screen target was on,
+                                      TRUE ~ Stim_Sides)) %>%                       # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides`
+                                                                                    # unchanged
         group_by(CorrSide) %>%
         mutate(Side_Acc = mean(Acc, na.rm = TRUE)) %>%
         ungroup() %>%
@@ -176,24 +178,32 @@ server <- function(input, output, session) {
     
     # Transforms from Time to Frequency Domain
     amplitude <- function(x, y){
-      pre_pad <- length(pcpts) * (length(unique(cmbd_w$CTI))) * y
+      pre_pad <- nrow(x)                                                          # Number of rows expected with one row per pcpt per CTI per shuffle
       x %>%
-        group_by(participant) %>%
-        mutate_at(vars(locations), list(~case_when("Detrending" %in% input$trends ~ . - polyval(polyfit(CTI, ., 2), CTI), TRUE ~ .))) %>%
-        mutate_at(vars(locations), list(~ case_when("Demeaning" %in% input$trends ~ . - mean(.), TRUE ~ .))) %>%
-        mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%
         ungroup() %>%
-        add_row(participant = rep(pcpts, y * (ceiling((input$duration - diff(range(cmbd_w$CTI)))/input$samp_per)))) %>%
-        head(-length(pcpts) * y) %>%
-        mutate_at(vars(locations), list(~coalesce(., 0))) %>%
-        mutate(samp_shuff = ifelse(row_number() <= pre_pad, 
-                                   RoundTo(row_number(), pre_pad / y,
-                                           ceiling) / (pre_pad / y), 
-                                   RoundTo(row_number() - pre_pad, (n() - pre_pad) / (y),
-                                           ceiling) / ((n() - pre_pad) / y))) %>%
+        mutate(samp_shuff = RoundTo(row_number(), pre_pad / y,                    # Creates variable to track shuffle number which is then used for group_by...
+                                    ceiling) / (pre_pad / y)) %>%               
         group_by(participant, samp_shuff) %>%
-        mutate_at(vars(locations), list(~Mod(sqrt(2/n()) * fft(.))^2)) %>%
-        mutate(Hz = round((row_number() - 1) / (n() * input$samp_per), 2)) %>%
+        mutate_at(vars(locations),
+                  list(~ case_when("Detrending" %in% input$trends ~                     # If `Detrending` selected...
+                                     . - polyval(polyfit(CTI, ., 2), CTI),        # detrend with this formula...
+                                   TRUE ~ .))) %>%                                # otherwise ignore
+        mutate_at(vars(locations), list(~case_when("Demeaning" %in% input$trends ~      # Works just like the detrending except for demeaning
+                                                     . - mean(.), TRUE ~ .))) %>%
+        mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%               # Apply window
+        ungroup() %>%
+        add_row(participant = rep(pcpts,                                          # Add empty rows (other than participant name) as additional CTI's needed to reach desired padded...
+                                  y * (floor((input$duration - diff(range(              # `duration` of intervals for each participant for...
+                                    cmbd_w$CTI))) / input$samp_per)))) %>%              # each shuffle (`y` represents each shuffle)
+        mutate_at(vars(locations), list(~coalesce(., 0))) %>%                     # Add zeros in newly-created empty rows for locations columns to zero-pad them; note these rows follow...
+        # non-padded data, i.e. they are tailing zeros that are padding on the back-end
+        mutate_at(vars(samp_shuff), list(~coalesce(., RoundTo(                    # Tags the padded rows with one of the shuffles created earlier with `samp_shuff`...
+          row_number() - pre_pad,                                                 # the non-padded rows (<= pre_pad) appear first and have already been tagged, so we keep them as they are
+          (n() - pre_pad) / (y),
+          ceiling) / ((n() - pre_pad) / y)))) %>%
+        group_by(participant, samp_shuff) %>%                                     # This group_by is critical so we're only taking the FFT of each shuffle
+        mutate_at(vars(locations), list(~Mod(sqrt(2 / n()) * fft(.)) ^ 2)) %>%    # Tabulate amplitude
+        mutate(Hz = (row_number() - 1) / (n() * input$samp_per)) %>%                    # Set Hz corresponding to each amplitude
         ungroup() %>%
         select(-CTI)
     }
@@ -300,8 +310,7 @@ server <- function(input, output, session) {
         cmbd_w %>%
           group_by(participant) %>%
           sample_n(length(CTIs), weight = CTI) %>%
-          mutate_at(vars(CTI), list(~round(seq(min(CTIs), max(CTIs), input$samp_per), 2))) %>%
-          mutate(samp_shuff = x)
+          mutate_at(vars(CTI), list(~round(seq(min(CTIs), max(CTIs), input$samp_per), 2)))
       }
       
       # Produces and save graph
