@@ -133,7 +133,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
     pre_pad <- nrow(x)                                                          # Number of rows expected with one row per pcpt per CTI per shuffle
     x %>%
       ungroup() %>%
-      mutate(samp_shuff = RoundTo(row_number(), pre_pad / y,                    # Creates variable to track shuffle number which is then used for group_by...
+      mutate(samp_shuff = RoundTo(row_number(), pre_pad / y,                    # Creates variable to track shuffle number which is then used for group_by
                                   ceiling) / (pre_pad / y)) %>%               
       group_by(participant, samp_shuff) %>%
       mutate_at(vars(locations),
@@ -144,7 +144,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
                                                     . - mean(.), TRUE ~ .))) %>%
       mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%               # Apply window
       ungroup() %>%
-      add_row(participant = rep(pcpts,                                          # Add empty rows (other than participant name) as additional CTI's needed to reach desired padded...
+      add_row(participant = rep(pcpts,                                          # Add empty rows (other than subject ID) as additional CTI's needed to reach desired padded...
                                 y * (floor((duration - diff(range(              # `duration` of intervals for each participant for...
                                   cmbd_w$CTI))) / samp_per)))) %>%              # each shuffle (`y` represents each shuffle)
       mutate_at(vars(locations), list(~coalesce(., 0))) %>%                     # Add zeros in newly-created empty rows for locations columns to zero-pad them; note these rows follow...
@@ -152,7 +152,8 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
       mutate_at(vars(samp_shuff), list(~coalesce(., RoundTo(                    # Tags the padded rows with one of the shuffles created earlier with `samp_shuff`...
         row_number() - pre_pad, (n() - pre_pad) / (y),                          # the non-padded rows (<= pre_pad) appear first and have already been tagged, so we keep them as they are
         ceiling) / ((n() - pre_pad) / y)))) %>%
-      group_by(participant, samp_shuff) %>%                                     # This group_by is critical so we're only taking the FFT of each shuffle
+      mutate(mult_correcs := floor(n_distinct(CTI) / 2) + 1) %>%                # Count number of p-values we will ultimately test for multiple comparisons
+      group_by(participant, samp_shuff, mult_correcs) %>%                       # This group_by is critical so we're only taking the FFT of each shuffle
       mutate_at(vars(locations), list(~Mod(sqrt(2 / n()) * fft(.)) ^ 2)) %>%    # Tabulate amplitude
       mutate(Hz = (row_number() - 1) / (n() * samp_per)) %>%                    # Set Hz corresponding to each amplitude
       ungroup() %>%
@@ -160,7 +161,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
   }
   
   amps <- amplitude(cmbd_w, 1)
-  fft_x <- round(1 / (length(unique(amps$Hz)) * samp_per), 1)
+  fft_x <- round(1 / (n_distinct(amps$Hz) * samp_per), 1)
   xaxis_r <- RoundTo(xaxisvals, fft_x)
   
   
@@ -283,11 +284,11 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
     
   } else { # Graph combined FFT ------------------------------------------------
 
-    set.seed(123)
-    fft_x <- 1 / (length(unique(amps$Hz)) * samp_per)
+    fft_x <- 1 / (n_distinct(amps$Hz) * samp_per)
     
     # Produces `shuff` # of null hypothesis permutations
     shuffle <- function(x){
+      set.seed(x)                                                               # Set seed inside loop so each run of `shuffle` using a repeatble seed
       cmbd_w %>%
         group_by(participant) %>%
         sample_n(length(CTIs), weight = CTI) %>%                                # Randomizes row order of CTI's for each participant
@@ -296,10 +297,11 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
     
     amps_shuff <- do.call(rbind, mclapply(1:shuff, shuffle)) %>%                # 1:shuff creates a set of CTI's*(length(pcpts)) rows for each number in this vector (before zero-padding)
       amplitude(shuff) %>%                                                      # Tabulates amplitude for each participant's data for `shuff` number of shuffles
-      group_by(Hz, samp_shuff) %>%
+      group_by(Hz, samp_shuff, mult_correcs) %>%
       summarise_at(vars(locations), mean) %>%                                   # Finds average amplitude at each CTI across all participants per shuffle
       group_by(Hz) %>%
-      summarise_at(vars(locations), list(~quantile(., probs = 1 - pval))) %>%   # Finds the pval amplitude threshold for each CTI
+      summarise_at(vars(locations),                                             # Finds the pval amplitude threshold for each CTI...
+                   list(~quantile(., probs = 1 - pval / mean(mult_correcs)))) %>%     # correcting for multiple comparisons, setting α using Bonferroni
       combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),    # Finds average amplitude at each CTI for real (not surrogate) data, then merges that data with surrogate
               names = (c("Significance Cutoff", "Observed Data"))) %>%
       gather(Location, Power, -c(Hz, source)) %>%
