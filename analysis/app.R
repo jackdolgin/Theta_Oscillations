@@ -203,16 +203,17 @@ server <- function(input, output, session) {
           row_number() - pre_pad,                                                 # the non-padded rows (<= pre_pad) appear first and have already been tagged, so we keep them as they are
           (n() - pre_pad) / (y),
           ceiling) / ((n() - pre_pad) / y)))) %>%
-        mutate(mult_correcs := floor(n_distinct(CTI) / 2) + 1) %>%              # Count number of p-values we will ultimately test for multiple comparisons
-        group_by(participant, samp_shuff, mult_correcs) %>%                     # This group_by is critical so we're only taking the FFT of each shuffle
+        # mutate(mult_correcs := floor(n_distinct(CTI) / 2) + 1) %>%              # Count number of p-values we will ultimately test for multiple comparisons
+        group_by(participant, samp_shuff) %>%                     # This group_by is critical so we're only taking the FFT of each shuffle
         mutate_at(vars(locations), list(~Mod(sqrt(2 / n()) * fft(.)) ^ 2)) %>%    # Tabulate amplitude
         mutate(Hz = (row_number() - 1) / (n() * input$samp_per)) %>%            # Set Hz corresponding to each amplitude
         ungroup() %>%
+        filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2)) %>%
         select(-CTI)
     }
     
     amps <- amplitude(cmbd_w, 1)
-    fft_x <- round(1 / (n_distinct(amps$Hz) * input$samp_per), 1)
+    fft_x <- 1 / input$duration
     xaxis_r <- RoundTo(input$xaxisvals, fft_x)
 
     
@@ -318,11 +319,10 @@ server <- function(input, output, session) {
       # Produces and save graph
       amps_shuff <- do.call(rbind, mclapply(1:input$shuff, shuffle)) %>%
         amplitude(input$shuff) %>%
-        group_by(Hz, samp_shuff, mult_correcs) %>%
+        group_by(Hz, samp_shuff) %>%
         summarise_at(vars(locations), mean) %>%
         group_by(Hz) %>%
-        summarise_at(vars(locations),                                             # Finds the pval amplitude threshold for each CTI...
-                     list(~quantile(., probs = 1 - input$pval / mean(mult_correcs)))) %>%
+        summarise_at(vars(locations), list(~quantile(., probs = 1 - input$pval))) %>%
         combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),
                 names = (c("Significance Cutoff", "Observed Data"))) %>%
         gather(Location, Power, -c(Hz, source)) %>%
