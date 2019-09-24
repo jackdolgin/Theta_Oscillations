@@ -1,14 +1,14 @@
 # Install packages if not already installed, then load them
-if (!require(devtools)) install.packages("devtools")
-if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
-smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec",
-              "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel",
-              "scales", "lazyeval", "stats", "gdata", "viridis", "gginnards"))
+if (!require(devtools)) install.packages("pacman")
+pacman::p_load(utils, tidyr, dplyr, ggplot2, DescTools, bspec, pracma,
+               gridExtra, data.table, tables, zoo, scales, lazyeval, stats,
+               gdata, viridis, gginnards, purrr)
+pacman::p_load_gh("moodymudskipper/safejoin")
 
 # Main function begins (encompasses other functions)
 main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
-                          samp_per, clumps, dep_var, pval, shuff, trends,
-                          smooth_method, win_func, xaxisvals, duration,
+                          samp_per, clumps, dep_var, α, shuff, mult_correcs,
+                          trends, smooth_method, win_func, xmax, duration,
                           attn_filter, catch_floor, side_bias, wm_floor,
                           invalid_floor, pre_range, post_range, block_range,
                           blocks_desired, miniblock_range, CTI_range){
@@ -24,7 +24,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
     if (wm_exp){
       701:730
     } else {
-      if(ext_objects == 2) c(501:522, 524:534) else 601:631
+      if(ext_objects == 2) c(501:522, 524:546) else 601:644
     }
   }
   
@@ -99,7 +99,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
                                                partial = TRUE)))
   }
   
-  cmbd <- do.call(rbind, lapply(pcpts, pcpts_combine)) %>%                      # Calls `pcpts_combine` function for argumenet `pcpts`; then combines each participant's dataframe into one
+  cmbd <- map_dfr(pcpts, pcpts_combine) %>%                                     # Calls `pcpts_combine` function for argumenet `pcpts` + combines each participant's dataframe into one
     arrange(Acc_prefilter, participant, Stim_Sides, CTI)
   CTIs <- unique(cmbd$CTI)
   if (win_func == "Tukey"){ win <- tukeywindow(length(CTIs), .5)} else {        # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length...
@@ -156,7 +156,8 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
       mutate_at(vars(locations), list(~Mod(sqrt(2 / n()) * fft(.)) ^ 2)) %>%    # Tabulate amplitude
       mutate(Hz = (row_number() - 1) / (n() * samp_per)) %>%                    # Set Hz corresponding to each amplitude
       ungroup() %>%
-      filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2)) %>%               # Remove alias frequencies above Nyquist
+      filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2),                   # Remove alias frequencies above Nyquist
+             Hz < xmax) %>%
       select(-CTI)
   }
   
@@ -219,7 +220,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
   sv_cmbd_g <- function(x) { x %>%
       ggsave(filename = file.path("plots", paste(display, dep_var, ext_objects,
                                                  "objects.pdf")),
-             width = xaxisvals)}
+             width = xmax)}
   
   # Conditionally returns data frame of prelim participant or post-FFT data,
   # exits function
@@ -249,7 +250,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
 
     # Produces right half of final graph
     fft_x <- round(1 / duration, 1)
-    xaxis_r <- RoundTo(xaxisvals, fft_x)
+    xaxis_r <- RoundTo(xmax, fft_x)
     
     fft_facets <- idvl_g(fft_g, amps %>%
                            group_by(participant, Hz) %>%
@@ -258,14 +259,14 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
                                   -c(!!!grouping_cnsts)) %>%
                            ggplot(aes(Hz, Power, color = Flash_and_or_field))) +
       geom_line() +
-      scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxisvals),
-                         breaks = seq(0, xaxisvals,
-                                      ifelse(xaxisvals > 10 |
-                                               xaxisvals != xaxis_r,
+      scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xmax),
+                         breaks = seq(0, xmax,
+                                      ifelse(xmax > 10 | xmax != xaxis_r,
                                              1 / max(Closest(
                                                xaxis_r / seq(
                                                  fft_x, xaxis_r, fft_x),
-                                               5) / xaxis_r), fft_x))) +
+                                               5) / xaxis_r),
+                                             fft_x))) +
       labs(caption = paste("Data from", as.character(length(pcpts)),
                            "participants")) +
       geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE,          # Sets location for label overlayed onto graph
@@ -296,37 +297,69 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
         mutate_at(vars(CTI), list(~seq(min(CTIs), max(CTIs), samp_per)))        # Keeps lines intact except resets CTI's in descending order, even though previous line was just...
     }                                                                           # randomizing, thereby randomizing CTI vs. performance
     
-    amps_shuff <- do.call(rbind, mclapply(1:shuff, shuffle)) %>%                # 1:shuff creates a set of CTI's*(length(pcpts)) rows for each number in this vector (before zero-padding)
+    amps_shuff <- map_dfr(1:shuff, shuffle) %>%                                 # 1:shuff creates a set of CTI's*(length(pcpts)) rows for each number in this vector (before zero-padding)
       amplitude(shuff) %>%                                                      # Tabulates amplitude for each participant's data for `shuff` number of shuffles
       group_by(Hz, samp_shuff) %>%
       summarise_at(vars(locations), mean) %>%                                   # Finds average amplitude at each CTI across all participants per shuffle
+      mutate_at(vars(locations), list(ntile = ~1.02 - ecdf(.)(.))) %>%          # Adds columns converting null `locations` -> a null distribution/rankings in the form of p-values
+      as.data.frame()
+      
+    amp_and_shf <- amps %>%
       group_by(Hz) %>%
-      summarise_at(vars(locations), list(~quantile(., probs = 1 - pval))) %>%   #       pval amplitude threshold for each CTI
+      summarise_at(vars(locations), mean) %>%
+      select(locations, Hz)
+    amp_and_shf <- pmap_df(amp_and_shf, function(Hz, ...){
+      map2(amp_and_shf[locations], c(locations),
+           function(column, colname){
+             map_dbl(column, function(cell){
+               amps_shuff[[which(pull(amps_shuff, colname) ==
+                                   min(Closest(amps_shuff[which(
+                                     amps_shuff$Hz %in% Hz), colname], cell))),
+                           paste0(colname, "_ntile")]]})})}) %>% #when there are multiple surrogate amplitudes that are equally close to the actual amplitude, take the smaller of the two amplitudes (associated with the more conservative p-value)
+      filter(row_number() == 1 + (sqrt(n()) + 1) *
+               floor((row_number() - 1) / sqrt(n()))) %>%
+      mutate_at(vars(locations),
+                list(~p.adjust(., method = mult_correcs) / .)) %>%
+      rename_all(paste0, "_ntile") %>%
+      cbind(amp_and_shf["Hz"]) %>%
+      safe_right_join(amps_shuff, by = "Hz", conflict = `*`)
+    
+    amp_and_shf <- locations %>%
+      map(~anewdf %>%
+            select(starts_with(.x), Hz) %>%
+            group_by(Hz) %>%
+            filter_at(vars(ends_with("ntile")),
+                      any_vars((abs(. - α) == min(abs(. - α))))) %>%
+            select(ends_with(.x))) %>%
+      reduce(full_join, by = "Hz") %>%
+      ungroup() %>%
       combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),    #       average amplitude at each CTI for real (not surrogate) data, then merges that data with surrogate
               names = (c("Significance Cutoff", "Observed Data"))) %>%
       gather(Location, Power, -c(Hz, source)) %>%
       right_join(gather(conf_int(amps, Hz), Location, Conf_Int, -Hz),
                  by = c("Hz", "Location"))
-    (move_layers(cmbd_g(fft_g, ggplot(amps_shuff, aes(Hz, Power, col = Location,
+    
+    (move_layers(cmbd_g(fft_g, ggplot(amp_and_shf, aes(Hz, Power,
+                                                      col = Location,
                                                       linetype = source, 
                                                       ymin = Power - Conf_Int,
                                                       ymax = Power + Conf_Int,
                                                       fill = Location))) +
                    scale_linetype_manual(values = c("solid", "dashed")) +
                    scale_x_continuous(name = "Frequency (Hz)",
-                                      limits = c(0, xaxisvals),
-                                      breaks = seq(0, xaxisvals,
+                                      limits = c(0, xmax),
+                                      breaks = seq(0, xmax,
                                                    ifelse(fft_x > .5,
                                                           round(fft_x, 2),
                                                           1))) +
                    labs(linetype = "",
                         caption = paste("Significance threshold at p < ",
-                                         as.character(pval))) +
-                   geom_ribbon(data = filter(amps_shuff,
+                                         as.character(α))) +
+                   geom_ribbon(data = filter(amp_and_shf,
                                              source == "Observed Data"),
                                alpha = 0.15, aes(color = NULL)) +
                    geom_point(size = 3,
-                              data = amps_shuff %>% spread(source, Power) %>%
+                              data = amp_and_shf %>% spread(source, Power) %>%
                                 filter(`Observed Data` >
                                          `Significance Cutoff`) %>%
                                 select(-c(`Significance Cutoff`, Conf_Int)) %>%
@@ -361,15 +394,17 @@ main_function(display = "FFT Across Participants",                              
                                                                                 # re-sample at a different rate, which would just clump neighboring CTI's together (whereas the `clump`...
                                                                                 # variable groups neighbors but doesn't combine them, keeping the same total number of bins)
               
-              clumps = 2,                                                       # Number of points to average at each CTI; `1` means this function does nothing, `3` means each CTI is...
+              clumps = 0,                                                       # Number of points to average at each CTI; `1` means this function does nothing, `3` means each CTI is...
                                                                                 # the average of that CTI and its neighboring CTI's on each sides, etc...
               
               dep_var = "Accuracy",                                             # Either `Accuracy`or `Response Time`
               
-              pval = .05,                                                       # The p-value to use for drawing the significance cutoff on the graphs
+              α = .05,                                                          # The alpha threshold to use for drawing the significance cutoff on the graphs
               
               shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number...
                                                                                 # slows down the run time
+              
+              mult_correcs = "BH",
               
               trends = c("Detrending", "Demeaning"),                            # Either `Detrending`, `Demeaning`, both, or an empty vector
               
@@ -378,7 +413,7 @@ main_function(display = "FFT Across Participants",                              
               win_func = "Tukey",                                               # Choose between the following types of windowing functions: `Tukey`, `Square`, `Hann`, `Welch`,
                                                                                 # `Triangle`, `Hamming`, `Cosine`, or `Kaiser`
               
-              xaxisvals = 15,                                                   # Greatest x-axis value included in graph
+              xmax = 15,                                                        # Greatest x-axis value included in graph
               
               duration = 1,                                                     # Duration (Seconds) Analyzed Including Padding
               
@@ -392,7 +427,7 @@ main_function(display = "FFT Across Participants",                              
 
               wm_floor = .7,                                                    #                           working memory task accuracy is < `wm_floor`
               
-              invalid_floor = .15,                                              #                           invalid trial accuracy is < `invalid_floor`
+              invalid_floor = .02,                                              #                           invalid trial accuracy is < `invalid_floor`
                             
               pre_range = c(.45, .85),                                          #                           unfiltered/scrutinized data is outside of the selected range
               

@@ -310,7 +310,7 @@ def big_opacity(s):
     return globals()["square_{0}".format(square_absent)].setOpacity(s)
 
 def run_wm_arith():
-    return (expmatrix[9][randomseq[trial]] or rep == 0) and blocktrialcount > 1  # or rep == 0 means that for any trial in rep == 0 (practice trials) there will be a wm/arith task on the screen; blocktrialcount > 1 means it can't be the first trial of the block
+    return (expmatrix[9][randomseq[trial]] or rep == 0) and blocktrialcount > 1 # or rep == 0 means that for any trial in rep == 0 (practice trials) there will be a wm/arith task on the screen; blocktrialcount > 1 means it can't be the first trial of the block
 
 def save_data(r, s):
     for i in s:
@@ -673,9 +673,8 @@ for rep in list(range(3)):
                     if frameN == square_start:
                         square_right.tStart = t
                         square_right.frameStart = frameN
-                        square_left, square_right.setAutoDraw(True)
-                        square_left.setAutoDraw(True)
-                        square_bottom.setAutoDraw(True)
+                        for a_stim in [square_right, square_left, square_bottom]:
+                            a_stim.setAutoDraw(True)
                     elif frameN == bulge_start:
                         bulge.tStart = t
                         bulge.frameStart = frameN
@@ -698,9 +697,8 @@ for rep in list(range(3)):
                         if frameN < lilstart:
                             lenkeylist += 1
                         else:
-                            square_right.setAutoDraw(False)
-                            square_left.setAutoDraw(False)
-                            square_bottom.setAutoDraw(False)
+                        for a_stim in [square_right, square_left, square_bottom]:
+                            a_stim.setAutoDraw(False)
 
 
                             ##-------------CHECK FOR RESPONSE-----------------##

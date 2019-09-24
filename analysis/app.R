@@ -1,8 +1,14 @@
-# if (!require(devtools)) install.packages('devtools')
-# if (!require(smisc)) devtools::install_github("stevenworthington/smisc")
-# smisc::ipak(c("utils", "tidyr", "dplyr", "ggplot2", "DescTools", "bspec", "pracma", "gridExtra", "data.table", "tables", "zoo", "parallel", "scales", "lazyeval", "stats", "gdata", "viridis", "gginnards", "shiny", "shinyWidgets"))
+# Install packages if not already installed, then load them
+# if (!require(devtools)) install.packages("pacman")
+# pacman::p_load(utils, tidyr, dplyr, ggplot2, DescTools, bspec, pracma,
+#                gridExtra, data.table, tables, zoo, scales, lazyeval, stats,
+#                gdata, viridis, gginnards, purrr, shiny, shinyWidgets)
 
-library(utils); library(tidyr); library(dplyr); library(ggplot2); library(DescTools); library(bspec); library(pracma); library(gridExtra); library(data.table); library(tables); library(zoo); library(parallel); library(scales); library(lazyeval); library(stats); library(gdata); library(viridis); library(gginnards); library(shiny); library(shinyWidgets)
+library(utils); library(tidyr); library(dplyr); library(ggplot2);
+library(DescTools); library(bspec); library(pracma); library(gridExtra);
+library(data.table); library(tables); library(zoo); library(scales);
+library(lazyeval); library(stats); library(gdata); library(viridis);
+library(gginnards); library(purrr); library(shiny); library(shinyWidgets)
 
 ui <- fluidPage(
   title = "Theta Oscillations Analysis",
@@ -23,18 +29,19 @@ ui <- fluidPage(
                   switchInput("iso_sides", "Separate Hemifields", labelWidth = 150), br(),
                   switchInput("sbtr", "Analyze Invalid - Valid", labelWidth = 150), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
                   numericInput("samp_per", "Sampling Period", min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(1 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
-                  numericInput("clumps", "Neighbors to average at each CTI", min = 0, max = 14, value = 2, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
+                  numericInput("clumps", "Neighbors to average at each CTI", min = 0, max = 14, value = 0, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
                   ),
             column(3,
                   radioGroupButtons("dep_var", "Dependent Variable", c("Accuracy", "Response Time"), selected = "Accuracy", status = "primary"), br(),
-                  numericInput("pval", "P-value", max = .99, value = .05), helpText("The p-value to use for drawing the significance cutoff on the graphs"), br(),
-                  numericInput("shuff", "Surrogate Shuffles for Null Hypothesis", min = 1, max = 10000, value = 50, step = 1), helpText("NOTE: increasing this number slows down the run time")
+                  numericInput("α", "Alpha Value", max = .99, value = .05), helpText("The α to use for drawing the significance cutoff on the graphs"), br(),
+                  numericInput("shuff", "Surrogate Shuffles for Null Hypothesis", min = 1, max = 10000, value = 50, step = 1), helpText("NOTE: increasing this number slows down the run time"), br(),
+                  radioGroupButtons("mult_correcs", "Multiple Comparisons Correction", c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"), selected = "BH", status = "primary")
             ),
            column(5, br(),
                   checkboxGroupButtons("trends", choices = c("Detrending", "Demeaning"), selected = c("Detrending", "Demeaning"), status = "primary"), br(),
                   radioGroupButtons("smooth_method", "Smoothing Individuals\" Time-Series", c("GLM", "GAM", "Loess", "LM"), selected = "Loess", status = "primary"), br(),
                   radioGroupButtons("win_func", "Windowing Function", c("Cosine", "Hamming", "Hann", "Kaiser", "Square", "Triangle", "Tukey", "Welch"), selected = "Tukey", status = "primary"), br(),
-                  numericInput("xaxisvals", "Max Hz Displayed", min = 1, value = 15), br(),
+                  numericInput("xmax", "Max Hz Displayed", min = 1, value = 15), br(),
                   numericInput("duration", "Duration (Seconds) Analyzed Including Padding", min = .8, max = 10, value = 1, step = .001)
            )),
   fluidRow(class = "text-center", 
@@ -46,7 +53,7 @@ ui <- fluidPage(
   column(4, br(),
          numericInput("side_bias", "Side Bias Ceiling", min = .01, max = .99, value = .2), helpText("Filter out participants whose hit rate at one visual field - another visual field is > this ceiling"), br(),
          numericInput("wm_floor", "Working Memory Accuracy Floor", min = .01, max = .99, value = .7), helpText("Filter out participants whose working memory task accuracy is < this cutoff"), br(),
-         numericInput("invalid_floor", "Invalid Trial Accuracy Floor", min = .01, max = .99, value = .15), helpText("Filter out participants whose accuracy on invalid trials is < this cutoff")
+         numericInput("invalid_floor", "Invalid Trial Accuracy Floor", min = .01, max = .99, value = .02), helpText("Filter out participants whose accuracy on invalid trials is < this cutoff")
   ),
   column(4, br(),
          sliderInput("pre_range", "Pre-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .85)), helpText("Remove participants whose unfiltered accuracy is outside this range"), br(),
@@ -76,7 +83,7 @@ server <- function(input, output, session) {
     if (input$wm_exp){
       701:730
     } else {
-      if(input$ext_objects == "2-object Task") c(501:522, 524:534) else c(601:631)}
+      if(input$ext_objects == "2-object Task") c(501:522, 524:546) else c(601:644)}
     }
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
@@ -151,7 +158,7 @@ server <- function(input, output, session) {
                                                  partial = TRUE)))
     }
     
-    cmbd <- do.call(rbind, lapply(pcpts, pcpts_combine)) %>%                    # Calls `pcpts_combine` function for argumenet `pcpts`; then combines each participant's dataframe into one
+    cmbd <- map_dfr(pcpts, pcpts_combine) %>%                    # Calls `pcpts_combine` function for argumenet `pcpts`; then combines each participant's dataframe into one
       arrange(Acc_prefilter, participant, Stim_Sides, CTI)
     CTIs <- unique(cmbd$CTI)
     if (input$win_func == "Tukey"){ win <- tukeywindow(length(CTIs), .5)} else { # Creates window, which if `tukey` will add the parameter `r` == `.5` —so 'only' half the data length will be non-flat
@@ -203,18 +210,18 @@ server <- function(input, output, session) {
           row_number() - pre_pad,                                                 # the non-padded rows (<= pre_pad) appear first and have already been tagged, so we keep them as they are
           (n() - pre_pad) / (y),
           ceiling) / ((n() - pre_pad) / y)))) %>%
-        # mutate(mult_correcs := floor(n_distinct(CTI) / 2) + 1) %>%              # Count number of p-values we will ultimately test for multiple comparisons
         group_by(participant, samp_shuff) %>%                     # This group_by is critical so we're only taking the FFT of each shuffle
         mutate_at(vars(locations), list(~Mod(sqrt(2 / n()) * fft(.)) ^ 2)) %>%    # Tabulate amplitude
         mutate(Hz = (row_number() - 1) / (n() * input$samp_per)) %>%            # Set Hz corresponding to each amplitude
         ungroup() %>%
-        filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2)) %>%
+        filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2),
+               Hz < xmax) %>%
         select(-CTI)
     }
     
     amps <- amplitude(cmbd_w, 1)
     fft_x <- 1 / input$duration
-    xaxis_r <- RoundTo(input$xaxisvals, fft_x)
+    xaxis_r <- RoundTo(input$xmax, fft_x)
 
     
     # Set Up Graphing
@@ -291,8 +298,8 @@ server <- function(input, output, session) {
                              gather(Flash_and_or_field, Power, -Hz, -samp_shuff, -c(!!!grouping_cnsts)) %>%
                              ggplot(aes(Hz, Power, color = Flash_and_or_field))) +
         geom_line() +
-        scale_x_continuous(name = "Frequency (Hz)", limits = c(0, xaxis_r),
-                           breaks = seq(0, input$xaxisvals, ifelse(input$xaxisvals > 10 | input$xaxisvals != xaxis_r, 1/max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r), fft_x))) +
+        scale_x_continuous(name = "Frequency (Hz)", limits = c(0, input$xmax),
+                           breaks = seq(0, input$xmax, ifelse(input$xmax > 10 | input$xmax != xaxis_r, 1/max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r), fft_x))) +
         labs(caption = paste("Data from", as.character(length(pcpts)),
                              "participants")) +
         geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 2.5,# Sets location for label overlayed onto graph
@@ -317,28 +324,59 @@ server <- function(input, output, session) {
       }
       
       # Produces and save graph
-      amps_shuff <- do.call(rbind, mclapply(1:input$shuff, shuffle)) %>%
+      amps_shuff <- map_dfr(1:input$shuff, shuffle) %>%
         amplitude(input$shuff) %>%
         group_by(Hz, samp_shuff) %>%
         summarise_at(vars(locations), mean) %>%
+        mutate_at(vars(locations), list(ntile = ~1.02 - ecdf(.)(.))) %>%          # Adds columns converting null `locations` -> a null distribution/rankings in the form of p-values
+        as.data.frame()
+      
+      amp_and_shf <- amps %>%
         group_by(Hz) %>%
-        summarise_at(vars(locations), list(~quantile(., probs = 1 - input$pval))) %>%
-        combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),
+        summarise_at(vars(locations), mean) %>%
+        select(locations, Hz)
+      amp_and_shf <- pmap_df(amp_and_shf, function(Hz, ...){
+        map2(amp_and_shf[locations], c(locations),
+             function(column, colname){
+               map_dbl(column, function(cell){
+                 amps_shuff[[which(pull(amps_shuff, colname) ==
+                                     min(Closest(amps_shuff[which(
+                                       amps_shuff$Hz %in% Hz), colname], cell))),
+                             paste0(colname, "_ntile")]]})})}) %>% #when there are multiple surrogate amplitudes that are equally close to the actual amplitude, take the smaller of the two amplitudes (associated with the more conservative p-value)
+        filter(row_number() == 1 + (sqrt(n()) + 1) *
+                 floor((row_number() - 1) / sqrt(n()))) %>%
+        mutate_at(vars(locations),
+                  list(~p.adjust(., method = input$mult_correcs) / .)) %>%
+        rename_all(paste0, "_ntile") %>%
+        cbind(amp_and_shf["Hz"]) %>%
+        safe_right_join(amps_shuff, by = "Hz", conflict = `*`)
+      
+      amp_and_shf <- locations %>%
+        map(~amp_and_shf %>%
+              select(starts_with(.x), Hz) %>%
+              group_by(Hz) %>%
+              filter_at(vars(ends_with("ntile")),
+                        any_vars((abs(. - input$α) == min(abs(. - input$α))))) %>%
+              select(ends_with(.x))) %>%
+        reduce(full_join, by = "Hz") %>%
+        ungroup() %>%
+        combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),    #       average amplitude at each CTI for real (not surrogate) data, then merges that data with surrogate
                 names = (c("Significance Cutoff", "Observed Data"))) %>%
         gather(Location, Power, -c(Hz, source)) %>%
         right_join(gather(conf_int(amps, Hz), Location, Conf_Int, -Hz),
                    by = c("Hz", "Location"))
+      
       output$mygraph <- renderPlot({
-      (move_layers(cmbd_g(fft_g, ggplot(amps_shuff, aes(Hz, Power, col = Location, linetype = source, 
+      (move_layers(cmbd_g(fft_g, ggplot(amp_and_shf, aes(Hz, Power, col = Location, linetype = source, 
                                                         ymin = Power - Conf_Int, ymax = Power + Conf_Int, fill = Location))) +
                      scale_linetype_manual(values = c("solid", "dashed")) +
-                     scale_x_continuous(name = "Frequency (Hz)", limits = c(0, input$xaxisvals),
-                                        breaks = seq(0, input$xaxisvals, ifelse(fft_x > .5, round(fft_x, 2), 1))) +
+                     scale_x_continuous(name = "Frequency (Hz)", limits = c(0, input$xmax),
+                                        breaks = seq(0, input$xmax, ifelse(fft_x > .5, round(fft_x, 2), 1))) +
                      labs(linetype = "",
                           caption = paste("Significance threshold at p < ",
-                                          as.character(input$pval))) +
-                     geom_ribbon(data = filter(amps_shuff, source == "Observed Data"), alpha = 0.15, aes(color = NULL)) +
-                     geom_point(size = 3, data = amps_shuff %>% spread(source, Power) %>%
+                                          as.character(input$α))) +
+                     geom_ribbon(data = filter(amp_and_shf, source == "Observed Data"), alpha = 0.15, aes(color = NULL)) +
+                     geom_point(size = 3, data = amp_and_shf %>% spread(source, Power) %>%
                                   filter(`Observed Data` > `Significance Cutoff`) %>%
                                   select(-c(`Significance Cutoff`, Conf_Int)) %>%
                                   gather(source, Power, -Hz, -Location), 
