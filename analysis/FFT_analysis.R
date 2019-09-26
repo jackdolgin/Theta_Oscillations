@@ -10,8 +10,9 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
                           samp_per, clumps, dep_var, α, shuff, mult_correcs,
                           trends, smooth_method, win_func, xmax, duration,
                           attn_filter, catch_floor, side_bias, wm_floor,
-                          invalid_floor, pre_range, post_range, block_range,
-                          blocks_desired, miniblock_range, CTI_range){
+                          invalid_floor, pre_range, post_range, filtered_cap,
+                          block_range, blocks_desired, miniblock_range,
+                          CTI_range){
   
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter,       # Columns that are frequently used for grouping, variable means...
                          Acc_postfilter, CatchAcc)                              # don't have to type them out every time we use them for grouping
@@ -88,7 +89,8 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
       mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
              Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                      # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered...
                                                                                 # for `block_range`, unlike `Acc_prefilter`...
-      filter(between(Acc_postfilter, post_range[1], post_range[2])) %>%         # Prunes participants whose non-catch, post-block-filtering accuracy is outside of desired range 
+      filter(between(Acc_postfilter, post_range[1], post_range[2]),             # Prunes participants whose non-catch, post-block-filtering accuracy is outside of desired range 
+             Trials_filtered_out <= filtered_cap) %>%
       group_by(CTI, Stim_Sides, !!!grouping_cnsts) %>%
       summarise_at(vars(Acc, RT), list(~mean(., na.rm = TRUE))) %>%             # Overwrites `Acc` and `RT` columns according to mean of each combination of `CTI` and `Stim_Sides`
       arrange(CTI) %>%
@@ -308,14 +310,14 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
       group_by(Hz) %>%
       summarise_at(vars(locations), mean) %>%
       select(locations, Hz)
-    amp_and_shf <- pmap_df(amp_and_shf, function(Hz, ...){
+    amp_and_shf <- pmap_df(amp_and_shf, function(Hz, ...){                      # For each row in `amps`...
       map2(amp_and_shf[locations], c(locations),
            function(column, colname){
-             map_dbl(column, function(cell){
-               amps_shuff[[which(pull(amps_shuff, colname) ==
-                                   min(Closest(amps_shuff[which(
-                                     amps_shuff$Hz %in% Hz), colname], cell))),
-                           paste0(colname, "_ntile")]]})})}) %>% #when there are multiple surrogate amplitudes that are equally close to the actual amplitude, take the smaller of the two amplitudes (associated with the more conservative p-value)
+             map_dbl(column, function(cell){                                    
+               amps_shuff[[which(pull(amps_shuff, colname) ==                   # finds row in `amps_shuff` that...
+                                   min(Closest(amps_shuff[which(                # 1) is closest in value in the `colname` column (e.g. `Invalid`)...
+                                     amps_shuff$Hz %in% Hz), colname], cell))), # and 2 ) matches in the Hz column; `which` notes we're extracting the row's index...
+                           paste0(colname, "_ntile")]]})})}) %>%                # now that we know which row in `amps_shuff` to pull from, we extract the value in the `_ntile` column
       filter(row_number() == 1 + (sqrt(n()) + 1) *
                floor((row_number() - 1) / sqrt(n()))) %>%
       mutate_at(vars(locations),
@@ -325,7 +327,7 @@ main_function <- function(display, dset, ext_objects, wm_exp, iso_sides, sbtr,
       safe_right_join(amps_shuff, by = "Hz", conflict = `*`)
     
     amp_and_shf <- locations %>%
-      map(~anewdf %>%
+      map(~amp_and_shf %>%
             select(starts_with(.x), Hz) %>%
             group_by(Hz) %>%
             filter_at(vars(ends_with("ntile")),
@@ -404,7 +406,8 @@ main_function(display = "FFT Across Participants",                              
               shuff = 50,                                                       # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this number...
                                                                                 # slows down the run time
               
-              mult_correcs = "BH",
+              mult_correcs = "BH",                                              # Choose between the following types of multiple corrections: `holm`, `hochberg`, `hommel`, ...  
+                                                                                # "bonferroni", `BH`, `BY`, `fdr`, and `none`
               
               trends = c("Detrending", "Demeaning"),                            # Either `Detrending`, `Demeaning`, both, or an empty vector
               
@@ -432,6 +435,8 @@ main_function(display = "FFT Across Participants",                              
               pre_range = c(.45, .85),                                          #                           unfiltered/scrutinized data is outside of the selected range
               
               post_range = c(.45, .85),                                         #                           filtered data is outside of the selected range
+              
+              filtered_cap = .4,                                                #                     with at least `filtered_cap` % of trials filtered out
               
               block_range = c(.40, .80),                                        # Interpolates over trials if the average hit rate in that block, every 48 trials, is outside of the...
                                                                                 # select range

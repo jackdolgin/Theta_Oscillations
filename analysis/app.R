@@ -3,12 +3,14 @@
 # pacman::p_load(utils, tidyr, dplyr, ggplot2, DescTools, bspec, pracma,
 #                gridExtra, data.table, tables, zoo, scales, lazyeval, stats,
 #                gdata, viridis, gginnards, purrr, shiny, shinyWidgets)
+# pacman::p_load_gh("moodymudskipper/safejoin")
 
-library(utils); library(tidyr); library(dplyr); library(ggplot2);
-library(DescTools); library(bspec); library(pracma); library(gridExtra);
-library(data.table); library(tables); library(zoo); library(scales);
-library(lazyeval); library(stats); library(gdata); library(viridis);
+library(utils); library(tidyr); library(dplyr); library(ggplot2)
+library(DescTools); library(bspec); library(pracma); library(gridExtra)
+library(data.table); library(tables); library(zoo); library(scales)
+library(lazyeval); library(stats); library(gdata); library(viridis)
 library(gginnards); library(purrr); library(shiny); library(shinyWidgets)
+library(safejoin)
 
 ui <- fluidPage(
   title = "Theta Oscillations Analysis",
@@ -41,7 +43,7 @@ ui <- fluidPage(
                   checkboxGroupButtons("trends", choices = c("Detrending", "Demeaning"), selected = c("Detrending", "Demeaning"), status = "primary"), br(),
                   radioGroupButtons("smooth_method", "Smoothing Individuals\" Time-Series", c("GLM", "GAM", "Loess", "LM"), selected = "Loess", status = "primary"), br(),
                   radioGroupButtons("win_func", "Windowing Function", c("Cosine", "Hamming", "Hann", "Kaiser", "Square", "Triangle", "Tukey", "Welch"), selected = "Tukey", status = "primary"), br(),
-                  numericInput("xmax", "Max Hz Displayed", min = 1, value = 15), br(),
+                  numericInput("xmax", "Max Hz Analyzed", min = 1, value = 15), br(),
                   numericInput("duration", "Duration (Seconds) Analyzed Including Padding", min = .8, max = 10, value = 1, step = .001)
            )),
   fluidRow(class = "text-center", 
@@ -57,7 +59,8 @@ ui <- fluidPage(
   ),
   column(4, br(),
          sliderInput("pre_range", "Pre-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .85)), helpText("Remove participants whose unfiltered accuracy is outside this range"), br(),
-         sliderInput("post_range", "Post-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .85)), helpText("Remove participants whose filtered data is outside of the selected range")
+         sliderInput("post_range", "Post-Filtered Accuracy Cutoffs", min = 0, max = 1, value = c(.45, .85)), helpText("Remove participants whose filtered data is outside of the selected range"), br(),
+         sliderInput("filtered_cap", "Maximum % Trials Filtered Out", min = 0, max = 1, value = .4), helpText("Remove participants whose trials are interpolated over more than percent of the time")
   )),
   fluidRow(class = "text-center", br(),
            column(4, h3( "Filtering Trials"), offset = 3)), br(), br(),
@@ -147,7 +150,8 @@ server <- function(input, output, session) {
         mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
                Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                    # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered
         # for `block_range`, unlike `Acc_prefilter`
-        filter(between(Acc_postfilter, input$post_range[1], input$post_range[2])) %>% # Prunes participants whose non-catch, post-block-filtering accuracy is outside of desired range 
+        filter(between(Acc_postfilter, input$post_range[1], input$post_range[2]),  # Prunes participants whose non-catch, post-block-filtering accuracy is outside of desired range 
+               Trials_filtered_out <= input$filtered_cap) %>%
         group_by(CTI, Stim_Sides, !!!grouping_cnsts) %>%
         summarise_at(vars(Acc, RT), list(~mean(., na.rm = TRUE))) %>%           # Overwrites `Acc` and `RT` columns according to mean of each combination of `CTI` and `Stim_Sides`
         arrange(CTI) %>%
@@ -215,7 +219,7 @@ server <- function(input, output, session) {
         mutate(Hz = (row_number() - 1) / (n() * input$samp_per)) %>%            # Set Hz corresponding to each amplitude
         ungroup() %>%
         filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2),
-               Hz < xmax) %>%
+               Hz < input$xmax) %>%
         select(-CTI)
     }
     
