@@ -697,8 +697,8 @@ for rep in list(range(3)):
                         if frameN < lilstart:
                             lenkeylist += 1
                         else:
-                        for a_stim in [square_right, square_left, square_bottom]:
-                            a_stim.setAutoDraw(False)
+                            for a_stim in [square_right, square_left, square_bottom]:
+                                a_stim.setAutoDraw(False)
 
 
                             ##-------------CHECK FOR RESPONSE-----------------##
