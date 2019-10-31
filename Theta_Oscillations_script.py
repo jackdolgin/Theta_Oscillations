@@ -18,7 +18,7 @@ os.chdir(_thisDir)
 
 # Store info about the experiment session
 expName = 'Theta_Oscillations_script.py'
-expInfo = {'participant': '', 'session':''}     #creates dictionary of experiment information
+expInfo = {'participant': '', 'session': '', 'fill':''}     #creates dictionary of experiment information
 dlg = gui.DlgFromDict(dictionary = expInfo, title = expName)    #creates popup at beginning of experiment that asks for participant number
 if dlg.OK == False: #says, if you hit escape/click cancel when that popup appears, then don't run the experiment; if this if statement didn't exist, experiment would run regardly of whether you hit escape/click cancel
     core.quit()  # user pressed cancel
@@ -47,7 +47,7 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 ##--------------------------SETUP THE WINDOW----------------------------------##
 
 win = visual.Window(
-    size = (1024, 768), color = [.15, .15, .15], fullscr = True,
+    size = (1024, 768), color = [.15, .15, .15], fullscr = False,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
@@ -60,7 +60,7 @@ main_keys = ["left", "down", "right"]
 wm_arith_keys = ["s", "S", "d", "D"]
 
 task = int(expInfo['session'])
-
+extra_task = int(expInfo['fill'])
 
 
 ##----------------------------------------------------------------------------##
@@ -112,7 +112,7 @@ soundfiles = [os.path.join('stimuli', 'ding.wav'),
 def to_frames(t): # converts time to frames accounting for the computer's refresh rate (aka framelength); the output is in frame rates
     return int(round(t / win.monitorFramePeriod))
 
-stagger = to_frames(.0167)
+stagger = to_frames(.0167) * 2
 lilduration = to_frames(.0333)
 bulge_duration = to_frames(.0333)
 trial_start_min = to_frames(1)
@@ -367,47 +367,49 @@ def create_inst(x, t):
 def continue_goback(s):
     return "\n\nPress space to " + s + " or \"B\" to go back."
 
+if extra_task == 2:
+    inst1 = create_inst(0, "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
+    
+elif extra_task == 1:
+    if task == 4:
+        wm_arith_task = "memory"
+        a_or_an = "a"
+        inst7_text = "Memory trials will ask you whether the absent location in the last two trials (where there was no square on the screen) was the same location (press \"" + wm_arith_keys[1] + "\") or whether it differed (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
+    elif task == 2 or task == 3:
+        wm_arith_task = "arithmetic"
+        a_or_an = "an"
+        inst7_text = "Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
 
-if task == 4:
-    wm_arith_task = "memory"
-    a_or_an = "a"
-    inst7_text = "Memory trials will ask you whether the absent location in the last two trials (where there was no square on the screen) was the same location (press \"" + wm_arith_keys[1] + "\") or whether it differed (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
-elif task == 2 or task == 3:
-    wm_arith_task = "arithmetic"
-    a_or_an = "an"
-    inst7_text = "Arithmetic trials will ask you whether the total on the left is the same as (press \"" + wm_arith_keys[1] + "\") the right or whether the totals differ (press \"" + wm_arith_keys[3] + "\")." + continue_goback("continue")
+    inst1 = create_inst(0, "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
 
+    inst2 = create_inst(left_inst, "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. This is a covert attention task, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
 
-inst1 = create_inst(0, "This study features two tasks, a visual attention task and one that tests " + wm_arith_task + ". The majority of trials will be visual attention tasks, interspersed with " + wm_arith_task + " trials some of the time.\n\nPress space to continue.")
+    inst3 = create_inst(0, "The attention task will have three phases." + continue_goback("continue"))
 
-inst2 = create_inst(left_inst, "During all visual attention trials there will be a fixation point in the center of the screen, as well as other relevant stimuli in other parts of the screen. This is a covert attention task, so we ask that you keep your eyes fixated on the cross the whole time. You can attend to the other stimuli with your (covert) attention without directing your eyes at them and keeping them fixated on the cross." + continue_goback("continue"))
+    inst4 = create_inst(left_inst, "In the first phase of trials, " + num_to_word + " squares " + inst4_help1 + " will appear." + inst4_help2 + continue_goback("continue"))
 
-inst3 = create_inst(0, "The attention task will have three phases." + continue_goback("continue"))
+    inst5 = create_inst(left_inst, "Next, a cue that bulges around one of the squares will appear and indicate with " + str(int(validity * 100)) + "% likelihood which square the target (the next phase) will appear in." + continue_goback("continue"))
 
-inst4 = create_inst(left_inst, "In the first phase of trials, " + num_to_word + " squares " + inst4_help1 + " will appear." + inst4_help2 + continue_goback("continue"))
+    inst6 = create_inst(left_inst, "Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + u" arrow key for the respective square. If you do not see a target, indicate this by not pressing any button." + continue_goback("continue"))
 
-inst5 = create_inst(left_inst, "Next, a cue that bulges around one of the squares will appear and indicate with " + str(int(validity * 100)) + "% likelihood which square the target (the next phase) will appear in." + continue_goback("continue"))
+    inst7 = create_inst(left_inst, inst7_text)
 
-inst6 = create_inst(left_inst, "Finally, a target will appear on most trials, in the form of a small dark square, inside one of the " + num_to_word + " squares with a " + str(int(validity * 100)) + "% chance in the cued location. When it appears, indicate which square it was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + u" arrow key for the respective square. If you do not see a target, indicate this by not pressing any button." + continue_goback("continue"))
+    inst8 = create_inst(0, u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first set, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial.\n\nAs a reminder, indicate which square the target was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + " arrow key for the respective square" + continue_goback("begin"))
 
-inst7 = create_inst(left_inst, inst7_text)
+    # inst9 = create_inst(0, "")
 
-inst8 = create_inst(0, u"To get the hang of it, you’ll start with two sets of practice trials. Just for the first set, there will also be ".encode('utf-8').decode('utf-8') + a_or_an + " " + wm_arith_task + " trial following every visual attention trial.\n\nAs a reminder, indicate which square the target was in by pressing the " + main_keys[2] + ", " + main_keys[1] +", or " + main_keys[0] + " arrow key for the respective square" + continue_goback("begin"))
+    wm_probe_text = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
 
-# inst9 = create_inst(0, "")
+    wmarith_probe = visual.TextStim(
+        win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 24)
 
-wm_probe_text = "Press \'" + wm_arith_keys[1] + "\' for same location or \'" + wm_arith_keys[3] + "\' for different location."
-
-wmarith_probe = visual.TextStim(
-    win = win, text = "Filler", units = 'deg', height = 1, wrapWidth = 24)
-
-secondpractice = create_inst(0, "In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
+    secondpractice = create_inst(0, "In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
 
 plzcexp = create_inst(0, "Please see the experimenter.")
 
 welcmmain = create_inst(0, "Welcome to the beginning of the main experiment. This experiment will last about 50 minutes. It will feature trials split among " + str(blocksreal - 1) + u" breaks (which will be self-timed, so you can break as long as you’d like).\n\nPress space to continue.".encode('utf-8').decode('utf-8'))
 
-main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"))
+    main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"))
 
 thanks = create_inst(0, "Thank you so much for your participation! Let the experimenter know that you're finished, and he'll set up the 1-minute, post-study demographic survey.")
 
@@ -493,8 +495,8 @@ q_opacity = 0
 noncatch_count = 0
 repstaircase = []
 
-# the 3 reps stand for practice rep, staircase rep, and then main experiment rep
-for rep in list(range(3)):
+# the 3 (potential) reps stand for practice rep, staircase rep, and then main experiment rep
+for rep in list(range(extra_task - 1, 3)):
 
     rep_acc = "NA" # just a placeholder really/ arbitrary value so we can enter the while loop
     loopscompleted = 0 # no practice trial restarts at beginning of each rep
@@ -768,92 +770,94 @@ for rep in list(range(3)):
 
 
 
-                ##------------------------------------------------------------##
-                ##--------------SET WM/ARITHMETIC TRIALS & TIMING-------------##
-                ##------------------------------------------------------------##
+                if extra_task == 1:
+                    ##------------------------------------------------------------##
+                    ##--------------SET WM/ARITHMETIC TRIALS & TIMING-------------##
+                    ##------------------------------------------------------------##
 
-
-                if task == 4:
-                    penultimate_absent = expmatrix[8][randomseq[trial - 1]]
-                    corr_wmarith_choice = (penultimate_absent == square_absent)
-                elif task == 2 or task == 3:
-                    penultimate_absent = "NA"
-                    corr_wmarith_choice = expmatrix[11][randomseq[trial]]
-
-                if run_wm_arith():
-                    for_start()
-                    lenkey_wmarith = 0
 
                     if task == 4:
-                        my_inst = wm_probe_text
-                        def correct_wmarith():
-                            return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
+                        penultimate_absent = expmatrix[8][randomseq[trial - 1]]
+                        corr_wmarith_choice = (penultimate_absent == square_absent)
                     elif task == 2 or task == 3:
-                        my_inst = expmatrix[10][randomseq[trial]]
-                        def correct_wmarith():
-                            return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
-                    wmarith_probe.setText(my_inst)
+                        penultimate_absent = "NA"
+                        corr_wmarith_choice = expmatrix[11][randomseq[trial]]
+
+                    if run_wm_arith():
+                        for_start()
+                        lenkey_wmarith = 0
+
+                        if task == 4:
+                            my_inst = wm_probe_text
+                            def correct_wmarith():
+                                return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
+                        elif task == 2 or task == 3:
+                            my_inst = expmatrix[10][randomseq[trial]]
+                            def correct_wmarith():
+                                return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
+                        wmarith_probe.setText(my_inst)
 
 
-                    ##-----------------RESET TRIAL CLOCK----------------------##
+                        ##-----------------RESET TRIAL CLOCK----------------------##
 
-                    trialClock.reset()  # clock
-
-
-
-                    ##--------------------------------------------------------##
-                    ##----------------WHILE LOOP BEGINS-----------------------##
-                    ##--------------------------------------------------------##
-
-
-                    while continueRoutine and frameN <= wmarith_total:
-                        while_start(wm_arith_keys)
-
-                        if frameN == wmarith_pause:
-                            wmarith_probe.setAutoDraw(True)
-                            wmarith_probetStart = t
-                            wmarith_probeframeStart = frameN
-                        elif frameN == wmarith_total:
-                             key = ['nope']
-                        if len(key) > 0:
-                            if frameN < wmarith_pause:
-                                lenkey_wmarith += 1
-
-                            else:
-                                check_correct(correct_wmarith())
-                                if rep == 0 and trial > 10:
-                                    acclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
-
-
-                        ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
-
-                        win.flip()
-                        if not continueRoutine:  # a component has requested a forced-end of Routine
-                            break
+                        trialClock.reset()  # clock
 
 
 
-                    ##--------------FINISH WHILE LOOP LEFTOVERS---------------##
-
-                    wmarith_probe.setAutoDraw(False)
-
-                    sound_clip.setSound(soundp)
-                    sound_clip.play() #correct and incorrect sounds are both 250 ms
+                        ##--------------------------------------------------------##
+                        ##----------------WHILE LOOP BEGINS-----------------------##
+                        ##--------------------------------------------------------##
 
 
-                ##-------------------RECORD DATA------------------------------##
+                        while continueRoutine and frameN <= wmarith_total:
+                            while_start(wm_arith_keys)
 
-                key_press = key[0]
-                save_data(True, [
-                    ['wmarith_probeStartTime', 'wmarith_probetStart'],
-                    ['wmarith_probeStartFrame', 'wmarith_probeframeStart'],
-                    ['ButtonPressTime_wmarith', 't'],
-                    ['Key_wmarith', 'key_press'],
-                    ['false_presses_wmarith', 'lenkey_wmarith'],
-                    ['Acc_wmarith', 'acc'],
-                    ['PenultimateAbsent', 'penultimate_absent'],
-                    ['Corr_wmarith_choice', 'corr_wmarith_choice']
-                ])
+                            if frameN == wmarith_pause:
+                                wmarith_probe.setAutoDraw(True)
+                                wmarith_probetStart = t
+                                wmarith_probeframeStart = frameN
+                            elif frameN == wmarith_total:
+                                 key = ['nope']
+                            if len(key) > 0:
+                                if frameN < wmarith_pause:
+                                    lenkey_wmarith += 1
+
+                                else:
+                                    check_correct(correct_wmarith())
+                                    if rep == 0 and trial > 10:
+                                        acclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
+
+
+                            ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
+
+                            win.flip()
+                            if not continueRoutine:  # a component has requested a forced-end of Routine
+                                break
+
+
+
+                        ##--------------FINISH WHILE LOOP LEFTOVERS---------------##
+
+                        wmarith_probe.setAutoDraw(False)
+
+                        sound_clip.setSound(soundp)
+                        sound_clip.play() #correct and incorrect sounds are both 250 ms
+
+
+                    ##-------------------RECORD DATA------------------------------##
+
+                    key_press = key[0]
+                    save_data(True, [
+                        ['wmarith_probeStartTime', 'wmarith_probetStart'],
+                        ['wmarith_probeStartFrame', 'wmarith_probeframeStart'],
+                        ['ButtonPressTime_wmarith', 't'],
+                        ['Key_wmarith', 'key_press'],
+                        ['false_presses_wmarith', 'lenkey_wmarith'],
+                        ['Acc_wmarith', 'acc'],
+                        ['PenultimateAbsent', 'penultimate_absent'],
+                        ['Corr_wmarith_choice', 'corr_wmarith_choice']
+                    ])
+
                 thisExp.nextEntry()
 
             if rep == 0 or rep == 1:
