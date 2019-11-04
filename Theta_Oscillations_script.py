@@ -210,7 +210,7 @@ key_attr = (("x_coords", -1, 1, 0), ("y_coords", sides_y, sides_y, bottom_y), ("
 for i in range(len(key_attr)):
     one_attr = key_attr[i]
      # d[one_attr[0]] = one_attr[1:len(one_attr) + 1 - extra_task]
-    d[one_attr[0]] = one_attr[1:len(one_attr)]
+    d[one_attr[0]] = one_attr[1:len(one_attr) + 1 - extra_task]
 
 def most_inval(which_attr, r):
     attr = d[which_attr] # dictionary taking either an `x` or `y` input spits out the list of possible x or y coordinates (e.g. [-1, 0, 1] for `x`)
@@ -219,27 +219,20 @@ def most_inval(which_attr, r):
         return list((attr[:o] + attr[o + 1:])[::direction])
     extra_list = []
     invalid_list = []
-    if which_attr == "x_coords" or which_attr == "y_coords":
-        for i in list(range(len(attr))):
-            extra_list.append(np.asarray([attr[i]] * extra_valids + toss_square(i) * (extra_invalids / len(toss_square(i))))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
-            filler = ((appearances - num_square_multiple - num_squares) / (num_squares)) * intervals / 2
+    for i in list(range(len(attr))):
+        extra_inval = toss_square(i)
+        if r == "partially_inval":
+            if which_attr == "x_coords" or which_attr == "y_coords":
+                extra_list.append(np.asarray([attr[i]] * extra_valids + extra_inval * (extra_invalids / len(extra_inval)))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
+            elif which_attr == "all_squares":
+                extra_list.append(np.asarray(extra_inval * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval))))
+            filler = ((appearances - num_square_multiple - num_squares) / (num_squares)) * intervals / len(extra_inval)
             for k in list(range(len(attr))):
                 invalid_list.append(toss_square(k) * (filler / len(attr)))
-        return np.concatenate(extra_list + invalid_list)
-    elif which_attr == "all_squares":
-        if r == "all_valid":
-            for i in list(range(len(attr))):
-                filler = intervals * num_square_multiple / (num_squares * 2)
-                invalid_list.append(toss_square(i) * filler)
-            return np.concatenate(extra_list + invalid_list)
-        elif r == "partially_inval":
-            for i in list(range(len(attr))):
-                extra_list.append(np.asarray(toss_square(i) * (extra_valids / (len(toss_square(i)))) + toss_square(i) * (extra_invalids / len(toss_square(i)))))
-                filler = ((appearances - num_square_multiple - num_squares) / (num_squares)) * intervals / 2
-                for k in list(range(len(attr))):
-                    invalid_list.append(toss_square(k) * (filler / len(attr)))
-
-            return np.concatenate(extra_list + invalid_list)
+        elif r == "all_valid":
+            filler = intervals * num_square_multiple / (num_squares * len(extra_inval))
+            invalid_list.append(extra_inval * filler)
+    return np.concatenate(extra_list + invalid_list)
 
 def peat_intervals(p, q):
     return np.repeat(p, intervals * q) # repeat each location of the cue/target (`p`) `q` interval sets
@@ -247,10 +240,6 @@ def peat_intervals(p, q):
 def peat_catch(p, q):
     return np.repeat(p * q, int(catchtrials / (3 * q))) # repeat catch trials for `p` number of trials
 num_square_quotient = num_square_multiple / num_squares
-print num_square_multiple
-print num_squares
-print (appearances - num_square_multiple) / num_squares
-print np.repeat(np.tile(d["x_coords"], (appearances - num_square_multiple) / num_squares), intervals)
 target_x = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["x_coords"], num_square_quotient), np.tile(d["x_coords"], (appearances - num_square_multiple) / num_squares))), 1), peat_catch(d["x_coords"], 1)))
 bulge_x = np.concatenate((peat_intervals(d["x_coords"], num_square_quotient), most_inval("x_coords", "partially_inval"), peat_catch(d["x_coords"], 1)))
 bulge_y = np.concatenate((peat_intervals(d["y_coords"], num_square_quotient), most_inval("y_coords", "partially_inval"), peat_catch(d["y_coords"], 1)))
