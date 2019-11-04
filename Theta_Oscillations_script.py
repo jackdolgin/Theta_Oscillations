@@ -85,19 +85,15 @@ square_size = round_up_to_lilsize_multiple(square_size)
 bulge_size = 1.15
 cross_size = .07
 
-# if extra_task == 2:
-#     sides_x = 280
-#     sides_y = 0
-#     bottom_y = 0
-# elif extra_task == 1:
-#     square_mult = 528
-#     sides_x = int(square_mult / 2)
-#     sides_y = int(square_mult * math.sqrt(3) / 6)
-#     bottom_y = int(-square_mult * math.sqrt(3) / 4)
-square_mult = 528
-sides_x = int(square_mult / 2)
-sides_y = int(square_mult * math.sqrt(3) / 6)
-bottom_y = int(-square_mult * math.sqrt(3) / 4)
+if extra_task == 2:
+    sides_x = 280
+    sides_y = 0
+    bottom_y = 0
+elif extra_task == 1:
+    square_mult = 528
+    sides_x = int(square_mult / 2)
+    sides_y = int(square_mult * math.sqrt(3) / 6)
+    bottom_y = int(-square_mult * math.sqrt(3) / 4)
 
 
 ##-----------------------------SHAPE COLORS-----------------------------------##
@@ -184,10 +180,11 @@ total_trials = liltrials + catchtrials
 trialsperblock = total_trials / blocks
 
 validity = .7
-num_squares = 3
+num_squares = 4 - extra_task
 num_square_multiple = round_to_multiple(validity * appearances, num_squares) # number of times we can guarantee every interval is valid at each square
 extra_valids = int((validity * liltrials - (num_square_multiple * intervals)) / num_squares) # for our desired percent of valid trials, some `appearances` had to include both valid and invalid trials-and then we randomized the intervals assigned to these two 'mixed' appearances
 extra_invalids = intervals - extra_valids
+print "extra_valids = " + str(extra_valids)
 print "extra_invalids = " + str(extra_invalids)
 wmarith_freq = .3
 wmarith_trials = int(total_trials * wmarith_freq)
@@ -209,8 +206,8 @@ d = {}
 key_attr = (("x_coords", -1, 1, 0), ("y_coords", sides_y, sides_y, bottom_y), ("all_squares", "left", "right", "bottom"))
 for i in range(len(key_attr)):
     one_attr = key_attr[i]
-     # d[one_attr[0]] = one_attr[1:len(one_attr) + 1 - extra_task]
     d[one_attr[0]] = one_attr[1:len(one_attr) + 1 - extra_task]
+    # d[one_attr[0]] = one_attr[1:len(one_attr)]
 
 def most_inval(which_attr, r):
     attr = d[which_attr] # dictionary taking either an `x` or `y` input spits out the list of possible x or y coordinates (e.g. [-1, 0, 1] for `x`)
@@ -219,6 +216,8 @@ def most_inval(which_attr, r):
         return list((attr[:o] + attr[o + 1:])[::direction])
     extra_list = []
     invalid_list = []
+    hmm = ((appearances - num_square_multiple - num_squares) / (num_squares))
+    print "hmm = " + str(hmm)
     for i in list(range(len(attr))):
         extra_inval = toss_square(i)
         if r == "partially_inval":
@@ -227,6 +226,9 @@ def most_inval(which_attr, r):
             elif which_attr == "all_squares":
                 extra_list.append(np.asarray(extra_inval * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval))))
             filler = ((appearances - num_square_multiple - num_squares) / (num_squares)) * intervals / len(extra_inval)
+            print "attr = "
+            print attr
+            print toss_square(i)
             for k in list(range(len(attr))):
                 invalid_list.append(toss_square(k) * (filler / len(attr)))
         elif r == "all_valid":
@@ -238,8 +240,11 @@ def peat_intervals(p, q):
     return np.repeat(p, intervals * q) # repeat each location of the cue/target (`p`) `q` interval sets
 
 def peat_catch(p, q):
-    return np.repeat(p * q, int(catchtrials / (3 * q))) # repeat catch trials for `p` number of trials
+    return np.repeat(p * q, int(catchtrials / (num_squares * q))) # repeat catch trials for `p` number of trials
 num_square_quotient = num_square_multiple / num_squares
+print "num_square_multiple = " + str(num_square_multiple)
+print "num_square_quotient = " + str(num_square_quotient)
+print np.repeat(d["x_coords"], num_square_quotient)
 target_x = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["x_coords"], num_square_quotient), np.tile(d["x_coords"], (appearances - num_square_multiple) / num_squares))), 1), peat_catch(d["x_coords"], 1)))
 bulge_x = np.concatenate((peat_intervals(d["x_coords"], num_square_quotient), most_inval("x_coords", "partially_inval"), peat_catch(d["x_coords"], 1)))
 bulge_y = np.concatenate((peat_intervals(d["y_coords"], num_square_quotient), most_inval("y_coords", "partially_inval"), peat_catch(d["y_coords"], 1)))
@@ -632,7 +637,6 @@ for rep in list(range(extra_task - 1, 4)):
 
 
             for trial in trials:
-                print "randomseq[trial] = " + str(randomseq[trial])
                 for_start()
                 cross.setAutoDraw(True) # cross begins on screen; is located outside of while loop since it is on screen the entire trial
                 lenkeylist = 0
@@ -666,7 +670,8 @@ for rep in list(range(extra_task - 1, 4)):
                     square_absent = "NA"
                 elif task == 2 or task == 4:
                     square_absent = expmatrix[8][randomseq[trial]]
-                    big_opacity(0)
+                    if  extra_task != 2:
+                        big_opacity(0)
 
                 ##----------------SET TARGET & BULGE LOCATIONS----------------##
 
@@ -709,7 +714,7 @@ for rep in list(range(extra_task - 1, 4)):
                     if frameN == square_start:
                         square_right.tStart = t
                         square_right.frameStart = frameN
-                        for a_stim in [square_right, square_left, square_bottom]:
+                        for a_stim in [square_right, square_left, square_bottom][0:len(d["x_coords"])]:
                             a_stim.setAutoDraw(True)
                     elif frameN == bulge_start:
                         bulge.tStart = t
@@ -733,7 +738,7 @@ for rep in list(range(extra_task - 1, 4)):
                         if frameN < lilstart:
                             lenkeylist += 1
                         else:
-                            for a_stim in [square_right, square_left, square_bottom]:
+                            for a_stim in [square_right, square_left, square_bottom][0:len(d["x_coords"])]:
                                 a_stim.setAutoDraw(False)
 
 
@@ -758,7 +763,7 @@ for rep in list(range(extra_task - 1, 4)):
 
                 ##----------------RESET BIG SQUARES' OPACITY------------------##
 
-                if task != 3:
+                if task != 3 and extra_task != 2:
                     big_opacity(1)
 
 
