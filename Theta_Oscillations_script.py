@@ -184,8 +184,6 @@ num_squares = 4 - extra_task
 num_square_multiple = round_to_multiple(validity * appearances, num_squares) # number of times we can guarantee every interval is valid at each square
 extra_valids = int((validity * liltrials - (num_square_multiple * intervals)) / num_squares) # for our desired percent of valid trials, some `appearances` had to include both valid and invalid trials-and then we randomized the intervals assigned to these two 'mixed' appearances
 extra_invalids = intervals - extra_valids
-print "extra_valids = " + str(extra_valids)
-print "extra_invalids = " + str(extra_invalids)
 wmarith_freq = .3
 wmarith_trials = int(total_trials * wmarith_freq)
 no_wmarith_trials = total_trials - wmarith_trials
@@ -217,23 +215,28 @@ def most_inval(which_attr, r):
     extra_list = []
     invalid_list = []
     hmm = ((appearances - num_square_multiple - num_squares) / (num_squares))
-    print "hmm = " + str(hmm)
-    for i in list(range(len(attr))):
-        extra_inval = toss_square(i)
+
+    if which_attr == "all_squares":
         if r == "partially_inval":
-            if which_attr == "x_coords" or which_attr == "y_coords":
-                extra_list.append(np.asarray([attr[i]] * extra_valids + extra_inval * (extra_invalids / len(extra_inval)))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
-            elif which_attr == "all_squares":
-                extra_list.append(np.asarray(extra_inval * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval))))
-            filler = ((appearances - num_square_multiple - num_squares) / (num_squares)) * intervals / len(extra_inval)
-            print "attr = "
-            print attr
-            print toss_square(i)
-            for k in list(range(len(attr))):
-                invalid_list.append(toss_square(k) * (filler / len(attr)))
+            for i in list(range(len(attr))):
+                extra_inval = toss_square(i)
+                extra_list.append(np.asarray(extra_inval * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval)))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
+                filler = ((appearances - num_square_multiple - num_squares) / num_squares) * intervals / len(extra_inval)
+                for k in list(range(len(attr))):
+                    invalid_list.append(toss_square(k) * (filler / len(attr)))
         elif r == "all_valid":
-            filler = intervals * num_square_multiple / (num_squares * len(extra_inval))
-            invalid_list.append(extra_inval * filler)
+            for i in list(range(len(attr))):
+                extra_inval = toss_square(i)
+                filler = intervals * num_square_multiple / (num_squares * len(extra_inval))
+                invalid_list.append(extra_inval * filler)
+    elif which_attr == "x_coords" or which_attr == "y_coords":
+        for i in list(range(len(attr))):
+            extra_inval = toss_square(i)
+            extra_list.append(np.asarray([attr[i]] * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval))))
+            ganoosh = (appearances - num_square_multiple - num_squares) / num_squares
+            filler = ganoosh * intervals / len(extra_inval)
+            for k in list(range(i * ganoosh, (i + 1) * ganoosh)):
+                invalid_list.append(toss_square(k % num_squares) * (filler / ganoosh))
     return np.concatenate(extra_list + invalid_list)
 
 def peat_intervals(p, q):
@@ -242,9 +245,6 @@ def peat_intervals(p, q):
 def peat_catch(p, q):
     return np.repeat(p * q, int(catchtrials / (num_squares * q))) # repeat catch trials for `p` number of trials
 num_square_quotient = num_square_multiple / num_squares
-print "num_square_multiple = " + str(num_square_multiple)
-print "num_square_quotient = " + str(num_square_quotient)
-print np.repeat(d["x_coords"], num_square_quotient)
 target_x = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["x_coords"], num_square_quotient), np.tile(d["x_coords"], (appearances - num_square_multiple) / num_squares))), 1), peat_catch(d["x_coords"], 1)))
 bulge_x = np.concatenate((peat_intervals(d["x_coords"], num_square_quotient), most_inval("x_coords", "partially_inval"), peat_catch(d["x_coords"], 1)))
 bulge_y = np.concatenate((peat_intervals(d["y_coords"], num_square_quotient), most_inval("y_coords", "partially_inval"), peat_catch(d["y_coords"], 1)))
@@ -320,9 +320,6 @@ expmatrix = [target_x, # side of screen of lil
 #randomization sequence
 randomseq = list(range(int(total_trials)))
 np.random.shuffle(randomseq)
-print expmatrix
-for i in range(12):
-    print len(expmatrix[i])
 def big_opacity(s):
     return globals()["square_{0}".format(square_absent)].setOpacity(s)
 
@@ -399,7 +396,7 @@ if extra_task == 2:
 
     inst6 = create_inst(0, "The task moves pretty quickly (only one second to respond after the target appears), so to get the hang of it you'll go through the following practice trials. We also ask that you keep your eye focus on the cross in the center of the screen. We ask this since part of what we're trying to study is when there are no eye-movements present. So just use your peripheral vision to detect the targets (this is called covert attention)." + continue_goback("begin"))
 
-    main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: two big squares, a bulge, and then one second to press the arrow for the side where the target appeared, or not to push a button in case you did not see a target. Again, please use only peripheral vision to detect the target and only stare at the cross in the middle." + continue_goback("begin"))
+    main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: two big squares, a bulge, and then one second to press the arrow for the side where the target appeared, or not to push a button in case you did not see a target. Again, please use only peripheral vision to detect the target and stare only at the cross in the middle." + continue_goback("begin"))
 
 elif extra_task == 1:
     if task == 4:
@@ -434,7 +431,7 @@ elif extra_task == 1:
 
     secondpractice = create_inst(0, "In this second set of practice trials, " + wm_arith_task + " trials will occur less regularly and at a more similar rate as the rest of the experiment. Press space to begin.")
 
-    main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and only stare at the cross in the middle." + continue_goback("begin"))
+    main_prev = create_inst(0, "The forthcoming trials will work just like the practice trials: visual attention trials mostly with a target present, and then intermittent " + wm_arith_task + " trials. Again, please use only peripheral vision to view stimuli during the visual attention task and stare only at the cross in the middle." + continue_goback("begin"))
 
 plzcexp = create_inst(0, "Please see the experimenter.")
 
