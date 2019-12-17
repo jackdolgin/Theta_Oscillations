@@ -30,7 +30,8 @@ ui <- fluidPage(
   fluidRow(column(4, br(),
                   switchInput("iso_sides", "Separate Hemifields", labelWidth = 150), br(),
                   switchInput("sbtr", "Analyze Invalid - Valid", labelWidth = 150), helpText("Subtract the dependent variable values at each CTI (valid - invalid) before performing analyses rather than analyzing valid and invalid trials independently"), br(),
-                  numericInput("samp_per", "Sampling Period", min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(1 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
+                  numericInput("samp_per", "Sampling Period", min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(3 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
+                  # numericInput("samp_per", "Sampling Period", min = round(1 / 60, 4), max = round(30 / 60, 4), value = round(3 / 60, 4), step = round(1 / 60, 4)), helpText(paste0("Spacing between CTI intevals (in seconds); the data was originally sampled at ", round(1 / 60, 4), ", but one could re-sample at a different rate, which would just clump neighboring CTI's together (whereas the below field groups neighbors but doesn't combine them, maintaining the total number of bins)")), br(),
                   numericInput("clumps", "Neighbors to average at each CTI", min = 0, max = 14, value = 0, step = 2), helpText("`0` means this function does nothing, `2` means each CTI is the average of that CTI and its neighboring CTI's on each sides, etc...")
                   ),
             column(3,
@@ -86,7 +87,9 @@ server <- function(input, output, session) {
     if (input$wm_exp){
       701:730
     } else {
-      if(input$ext_objects == "2-object Task") c(501:522, 524:546) else c(601:644)}
+      blocksize <- 72
+      if(input$ext_objects == "2-object Task") 901:922 else c(601:644)}
+      # if(input$ext_objects == "2-object Task") c(501:522, 524:546) else c(601:644)}
     }
 
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
@@ -125,8 +128,8 @@ server <- function(input, output, session) {
         mutate(Side_Acc = mean(Acc, na.rm = TRUE)) %>%
         ungroup() %>%
         mutate(Side_Diff = max(Side_Acc) - min(Side_Acc)) %>%
-        left_join(dem_df, by = c("participant" = "SubjID")) %>%
-        filter(grepl(ifelse(input$attn_filter, "task" , ""), Attentiveness),    # Prunes participants reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
+        # left_join(dem_df, by = c("participant" = "SubjID")) %>%
+        filter(#grepl(ifelse(input$attn_filter, "task" , ""), Attentiveness),    # Prunes participants reporting lack of alertness on at least two blocks, when `attn_filter` == TRUE
                Side_Diff <= input$side_bias,                                    #                     whose hit rate at one visual field - another visual field is > `side_bias`
                wm_Acc >= input$wm_floor) %>%                                    #                           working memory task accuracy is < `wm_floor`
         mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                     # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
@@ -207,7 +210,7 @@ server <- function(input, output, session) {
         ungroup() %>%
         add_row(participant = rep(pcpts,                                          # Add empty rows (other than subject ID) as additional CTI's needed to reach desired padded...
                                   y * (floor((input$duration - diff(range(              # `duration` of intervals for each participant for...
-                                    cmbd_w$CTI))) / input$samp_per)))) %>%              # each shuffle (`y` represents each shuffle)
+                                    cmbd_w$CTI))) / input$samp_per) - 1))) %>%              # each shuffle (`y` represents each shuffle)
         mutate_at(vars(locations), list(~coalesce(., 0))) %>%                     # Add zeros in newly-created empty rows for locations columns to zero-pad them; note these rows follow...
         # non-padded data, i.e. they are tailing zeros that are padding on the back-end
         mutate_at(vars(samp_shuff), list(~coalesce(., RoundTo(                    # Tags the padded rows with one of the shuffles created earlier with `samp_shuff`...
