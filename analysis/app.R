@@ -1,16 +1,15 @@
 # Install packages if not already installed, then load them
 # if (!require(devtools)) install.packages("pacman")
 # pacman::p_load(utils, tidyr, dplyr, ggplot2, DescTools, bspec, pracma,
-#                gridExtra, data.table, tables, zoo, scales, lazyeval, stats,
-#                gdata, viridis, gginnards, purrr, shiny, shinyWidgets)
+#                gridExtra, data.table, tables, zoo, scales, stats, gdata,
+#                viridis, gginnards, purrr, shiny, shinyWidgets)
 # pacman::p_load_gh("moodymudskipper/safejoin")
 
 library(utils); library(tidyr); library(dplyr); library(ggplot2)
 library(DescTools); library(bspec); library(pracma); library(gridExtra)
 library(data.table); library(tables); library(zoo); library(scales)
-library(lazyeval); library(stats); library(gdata); library(viridis)
-library(gginnards); library(purrr); library(shiny); library(shinyWidgets)
-library(safejoin)
+library(stats); library(gdata); library(viridis); library(gginnards);
+library(purrr); library(shiny); library(shinyWidgets); library(safejoin)
 
 ui <- fluidPage(
   title = "Theta Oscillations Analysis",
@@ -19,8 +18,8 @@ ui <- fluidPage(
   fluidRow(class = "text-center",
            column(4, h3( "Data Set, Task, and Graph Choice"), offset = 3)), br(), br(),
   fluidRow(class = "text-center",
-           column(2, radioGroupButtons("dset", choices = c("Pilot", "Experimental"), selected = "Experimental", status = "primary")),
-           column(2, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
+           column(2, radioGroupButtons("dset", choices = c("1a", "1b", "2a", "2b", "2c", "3a" ), selected = "1a", status = "primary")),
+           # column(2, radioGroupButtons("ext_objects", choices = c("2-object Task", "3-object Task"), status = "primary")),
            column(2, switchInput("wm_exp", "Working Memory Experiment", labelWidth = 300)),
            column(4, radioGroupButtons("display", choices = c("Time-Series Across Participants", "FFT Across Participants", "Time-Series + FFT by Individual"), selected = "FFT Across Participants", status = "primary"))
            ),
@@ -79,19 +78,29 @@ server <- function(input, output, session) {
   grouping_cnsts <- quos(participant, Trials_filtered_out, Acc_prefilter, Acc_postfilter, CatchAcc)
   
   observe({
-  pcpts <- if (input$dset == "Pilot") {
-    blocksize <- 54
-    if(input$ext_objects == "2-object Task") 301:324 else 401:427
-  } else {
-    blocksize <- 80
-    if (input$wm_exp){
-      701:730
-    } else {
-      blocksize <- 72
-      if(input$ext_objects == "2-object Task") 901:922 else c(601:644)}
-      # if(input$ext_objects == "2-object Task") c(501:522, 524:546) else c(601:644)}
+    batch <- substring(input$dset, 1, 1)
+    batch_version <- substring(input$dset, 2, 2)
+    if (batch == "1"){
+      blocksize <- 54
+      if (batch_version == "a"){
+        pcpts <- 301:324
+      } else if (batch_version == "b"){
+        pcpts <- 401:427
+      }
+    } else if (batch == "2"){
+      blocksize <- 80
+      if (batch_version == "a"){
+        pcpts <- c(501:522, 524:546)
+      } else if (batch_version == "b"){
+        pcpts <- 601:644
+      } else if (batch_version == "c"){
+        701:730
+      }
+    } else if(batch == "3"){
+      blocksize <- 79
+      pcpts <- 901:922
     }
-
+    
     dep_var_abbr <- as.name(ifelse(input$dep_var == "Accuracy", "Acc", "RT"))
     
     dem_df <- fread(file.path("data", "Demographics.csv")) %>%
@@ -187,46 +196,49 @@ server <- function(input, output, session) {
     }
     
     # Determines confidence intervals
-    conf_int <- function(x, ...){ x %>%
-        group_by(.dots = lazy_dots(...)) %>%
-        summarise_at(vars(locations), list(~qnorm(.975) * std_err(.)))
+    conf_int <- function(x, y){ x %>%
+        summarise_at(vars(y), list(~qnorm(.975) * std_err(.)))
     }
     
     # Transforms from Time to Frequency Domain
-    amplitude <- function(x, y){
+    amplitude <- function(x, y, z, q, ...){
       pre_pad <- nrow(x)                                                          # Number of rows expected with one row per pcpt per CTI per shuffle
       x %>%
         ungroup() %>%
-        mutate(samp_shuff = RoundTo(row_number(), pre_pad / y,                    # Creates variable to track shuffle number which is then used for group_by
-                                    ceiling) / (pre_pad / y)) %>%               
+        mutate(samp_shuff = row_number() %>% RoundTo(pre_pad / y, ceiling) %>%    # Creates variable to track shuffle number which is then used for group_by
+                 `*` (y / pre_pad)) %>%             
         group_by(participant, samp_shuff) %>%
         mutate_at(vars(locations),
                   list(~ case_when("Detrending" %in% input$trends ~                     # If `Detrending` selected...
-                                     . - polyval(polyfit(CTI, ., 2), CTI),        # detrend with this formula...
+                                     . - (polyfit(CTI, ., 2) %>% polyval(CTI )),        # detrend with this formula...
                                    TRUE ~ .))) %>%                                # otherwise ignore
         mutate_at(vars(locations), list(~case_when("Demeaning" %in% input$trends ~      # Works just like the detrending except for demeaning
                                                      . - mean(.), TRUE ~ .))) %>%
         mutate_at(vars(locations), list(~ . * win / Norm(win))) %>%               # Apply window
         ungroup() %>%
-        add_row(participant = rep(pcpts,                                          # Add empty rows (other than subject ID) as additional CTI's needed to reach desired padded...
-                                  y * (floor((input$duration - diff(range(              # `duration` of intervals for each participant for...
-                                    cmbd_w$CTI))) / input$samp_per) - 1))) %>%              # each shuffle (`y` represents each shuffle)
-        mutate_at(vars(locations), list(~coalesce(., 0))) %>%                     # Add zeros in newly-created empty rows for locations columns to zero-pad them; note these rows follow...
-        # non-padded data, i.e. they are tailing zeros that are padding on the back-end
-        mutate_at(vars(samp_shuff), list(~coalesce(., RoundTo(                    # Tags the padded rows with one of the shuffles created earlier with `samp_shuff`...
-          row_number() - pre_pad,                                                 # the non-padded rows (<= pre_pad) appear first and have already been tagged, so we keep them as they are
-          (n() - pre_pad) / (y),
-          ceiling) / ((n() - pre_pad) / y)))) %>%
-        group_by(participant, samp_shuff) %>%                     # This group_by is critical so we're only taking the FFT of each shuffle
-        mutate_at(vars(locations), list(~Mod(sqrt(2 / n()) * fft(.)) ^ 2)) %>%    # Tabulate amplitude
+        add_row(participant = cmbd_w$CTI %>% range %>% diff %>% - input$duration %>%    # Add empty rows (other than subject ID) as additional CTI's needed to reach desired padded...
+                  `/` (-samp_per) %>% + .00001 %>% floor %>% - 1 %>% `*` (y) %>%        # ... `duration` of intervals for each participant for each shuffle (`y` represents each shuffle)
+                  rep(pcpts, .)) %>%
+        mutate_at(vars(locations), list(~coalesce(., 0))) %>%
+        mutate_at(vars(samp_shuff),                                               # Tags the padded rows with one of the shuffles created earlier with `samp_shuff` the non-padded rows...
+                  list(~coalesce(., (row_number() - pre_pad) %>%                  # ... (<= pre_pad) appear first and have already been tagged, so we keep them as they are
+                                   RoundTo((n() - pre_pad) / y, ceiling) %>%
+                                   `/`((n() - pre_pad) / y)))) %>%
+        group_by(participant, samp_shuff) %>%                                   # This group_by is critical so we're only taking the FFT of each shuffle
+        mutate_at(vars(locations), list(~fft(.) %>%                               # Tabulate amplitude
+                                          `*`(sqrt(2 / n())) %>%
+                                          Mod %>% `^` (2))) %>%
         mutate(Hz = (row_number() - 1) / (n() * input$samp_per)) %>%            # Set Hz corresponding to each amplitude
         ungroup() %>%
         filter(dense_rank(Hz) - 1 <= floor(n_distinct(Hz) / 2),
                Hz < input$xmax) %>%
-        select(-CTI)
+        select(-CTI) %>%
+        pivot_longer(locations, z, values_to = q) %>%
+        group_by(!!!syms(...))
     }
     
-    amps <- amplitude(cmbd_w, 1)
+    amps <- function(w, ...){amplitude(cmbd_w, 1, "Location", w, ...)}
+    
     fft_x <- 1 / input$duration
     xaxis_r <- RoundTo(input$xmax, fft_x)
 
@@ -236,26 +248,27 @@ server <- function(input, output, session) {
     t_srs_g <- function(x){
       cmbd_w %>%
         gather(Location, !!dep_var_abbr, -c(CTI, !!!grouping_cnsts)) %>%
-        right_join(gather(conf_int(cmbd_w, CTI), Location, Conf_Int, -CTI),
+        right_join(gather(conf_int(group_by(cmbd_w, CTI), locations),
+                          Location, Conf_Int, -CTI),
                    by = c("CTI", "Location")) %>%
         group_by(CTI, Location, Conf_Int, !!!head(grouping_cnsts, x)) %>%
         summarise(!!dep_var_abbr := mean(!!dep_var_abbr)) %>%                               # Keeps either `RT` or `Acc` column—depending on whether `dep_var_abbr` parameter == `RT` or `Acc`
         ggplot(aes(CTI, !!dep_var_abbr, group = Location, color = Location,
                    fill = Location, ymin = !!dep_var_abbr - Conf_Int,
                    ymax = !!dep_var_abbr + Conf_Int)) + 
-        labs(title = paste0(input$dep_var, " by Cue-Target Interval ", input$ext_objects),
+        labs(title = paste(dep_var_abbr, "by Cue-Target Interval, Exp.", input$dset),
              x = "Cue-Target Interval (ms)")
     }
     fft_g <- function(x) { x +
-        labs(title = paste0("FFT of Target ", input$dep_var, ", ", input$ext_objects),
+        labs(title = paste0("FFT of Target ", input$dep_var, ", Exp. ", input$dset),
              col = "Target Location", y = "Spectral Power") +
         theme(panel.grid.minor.x = element_blank(),
               panel.grid.major.y = element_blank())
     }
     
-    viridis_cols <- .7 + RoundTo(.0001 * RoundTo(length(locations),
-                                                 4, floor), .2, ceiling)
     graph <- function(y, x) {
+      viridis_cols <- .7 +
+        RoundTo(.0001 * RoundTo(length(locations), 4, floor), .2, ceiling)
       y(x) +
         theme_bw() +
         scale_color_viridis_d(option = "C",
@@ -267,14 +280,14 @@ server <- function(input, output, session) {
         guides(colour = guide_legend(reverse = TRUE), fill = FALSE)
     }
     
-    idvl_g <- function(y, x){
+    idvl_g <- function(x, y){
       graph(y, x) +
         theme(plot.title = element_text(hjust = 0.5),
               plot.subtitle = element_text(hjust = 0.5)) +
         facet_wrap(~factor(participant, levels = pcpts),
                    ncol = RoundTo(length(pcpts) / 4, 1, ceiling),  scales = "free_x")                                   # `free` means the y_axis isn't fixed from participant to participant
     }
-    cmbd_g <- function(y, x) {
+    cmbd_g <- function(x, y) {
       graph(y, x) + geom_line(size = 1.5) +
         theme(legend.key.size = unit(.55, "in")) +
         labs(subtitle = paste( "Data from", as.character(length(pcpts)),
@@ -283,13 +296,13 @@ server <- function(input, output, session) {
     
     if (input$display == "Time-Series + FFT by Individual"){
       # Produces left half of final graph
-      ts_facets <- idvl_g(t_srs_g, 1) +
+      ts_facets <- idvl_g(1, t_srs_g) +
         geom_line(alpha = I(2 / 10), color = "grey", show.legend = FALSE) +       # Graphs unsmoothed data in light gray
         stat_smooth(method = tolower(input$smooth_method), span = 0.2, se = FALSE,               # Smoothes data depending on `smooth_method` parameter
                     size = .5, show.legend = FALSE)
       
       # Produces label for each right-side graph
-      plot_label <- amps %>%
+      plot_label <- amps("Power0", NULL) %>%
         group_by(!!!grouping_cnsts) %>%
         summarise() %>%
         ungroup() %>%
@@ -299,11 +312,12 @@ server <- function(input, output, session) {
         unite(lab, !!!tail(grouping_cnsts, -1), sep = "\n", remove = FALSE)
 
       # Produces right half of final graph
-      fft_facets <- idvl_g(fft_g, amps %>%
-                             group_by(participant, Hz) %>%
-                             summarise_all(mean) %>%
-                             gather(Flash_and_or_field, Power, -Hz, -samp_shuff, -c(!!!grouping_cnsts)) %>%
-                             ggplot(aes(Hz, Power, color = Flash_and_or_field))) +
+      fft_facets <- amps("Power0", c("participant", "Hz")) %>%
+        summarise_all(mean) %>%
+        gather(Flash_and_or_field, Power, -Hz, -samp_shuff,
+               -c(!!!grouping_cnsts)) %>%
+        ggplot(aes(Hz, Power, color = Flash_and_or_field)) %>%
+        idvl_g(fft_g) +
         geom_line() +
         scale_x_continuous(name = "Frequency (Hz)", limits = c(0, input$xmax),
                            breaks = seq(0, input$xmax, ifelse(input$xmax > 10 | input$xmax != xaxis_r, 1/max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r), fft_x))) +
@@ -315,80 +329,82 @@ server <- function(input, output, session) {
       }, height = 800, width = 1350)                # Combines time series and FFT graphs into one plot
     }  else if (input$display == "Time-Series Across Participants") {
       output$mygraph <- renderPlot({
-        move_layers(cmbd_g(t_srs_g, 0) +
-                      theme(panel.grid = element_blank()) +
-                      geom_ribbon(alpha = 0.15, aes(color = NULL)), "GeomRibbon", position = "bottom")
+        (cmbd_g(0, t_srs_g) +
+           theme(panel.grid = element_blank()) +
+           geom_ribbon(alpha = 0.15, aes(color = NULL))) %>%
+          move_layers("GeomRibbon", position = "bottom")
       }, height = 800, width = 1350)
     } else { # Graph combined FFT ------------------------------------------------
       
       # Produces `shuff` # of null hypothesis permutations
-      shuffle <- function(x){
+      amps_shuff <- map_dfr(1:input$shuff, function(x){
         set.seed(x)
         cmbd_w %>%
           group_by(participant) %>%
           sample_n(length(CTIs), weight = CTI) %>%
           mutate_at(vars(CTI), list(~round(seq(min(CTIs), max(CTIs), input$samp_per), 2)))
-      }
+      }) %>%                                                                      # ... randomizing, thereby randomizing CTI vs. performance
+        amplitude(shuff, "Location", "Power",                                     # Tabulates amplitude for each participant's data for `shuff` number of shuffles
+                  c("Hz", "samp_shuff", "Location")) %>%
+        summarise_at(vars(Power), mean) %>%                                       # Finds average amplitude at each CTI across all participants per shuffle
+        group_by(Hz, Location) %>%
+        mutate_at(vars(Power), list(ntile = ~1.02 - ecdf(.)(.))) 
       
-      # Produces and save graph
-      amps_shuff <- map_dfr(1:input$shuff, shuffle) %>%
-        amplitude(input$shuff) %>%
-        group_by(Hz, samp_shuff) %>%
-        summarise_at(vars(locations), mean) %>%
-        mutate_at(vars(locations), list(ntile = ~1.02 - ecdf(.)(.))) %>%          # Adds columns converting null `locations` -> a null distribution/rankings in the form of p-values
-        as.data.frame()
+      amp_and_shf <- amps("Power0", c("Hz", "Location")) %>%
+        summarise_at(vars(Power0), mean) %>%
+          ungroup() %>%
+          mutate(ntile = pmap_dbl(., function(Hz, Location, Power0, ...){           # For each row in `amps`...
+            amps_shuff %>%                                                          # ... finds row in `amps_shuff` that...
+              rename(Hz0 = Hz, Location0 = Location) %>%
+              filter(Hz0 == Hz,                                                     # ... 1) matches in the Hz column...
+                     Location0 == Location) %>%      
+              ungroup() %>%
+              top_n(1, -abs(Power - Power0)) %>%                # check why this pmap function is giving me slightly different results than what I'd written before
+              select(ntile) %>%
+              as.double()
+          })) %>%
+          group_by(Location) %>%
+          mutate_at(vars(ntile), list(~p.adjust(., method = input$mult_correcs) / .)) %>%
+          select(Hz, Location, ntile) %>%
+          safe_right_join(amps_shuff, by = c("Hz", "Location"),
+                          conflict = `*`) %>%
+          group_by(Hz, Location) %>%
+          filter(abs(ntile - input$α) == min(abs(ntile - input$α))) %>%
+          ungroup() %>%
+          select(-c(samp_shuff, ntile)) %>%
+          combine(amps("Power", c("Location", "Hz")) %>%                        # Finds average amplitude at each CTI for real (not surrogate) data, then merges that data with surrogate
+                    summarise(Power = mean(Power)) %>%
+                      ungroup(),
+                  names = c("Significance Cutoff", "Observed Data")) %>%
+          right_join(conf_int(amps("Conf_Int", c("Hz", "Location")), "Conf_Int"),
+                     by = c("Hz", "Location"))
       
-      amp_and_shf <- amps %>%
-        group_by(Hz) %>%
-        summarise_at(vars(locations), mean) %>%
-        select(locations, Hz)
-      amp_and_shf <- pmap_df(amp_and_shf, function(Hz, ...){
-        map2(amp_and_shf[locations], c(locations),
-             function(column, colname){
-               map_dbl(column, function(cell){
-                 amps_shuff[[which(pull(amps_shuff, colname) ==
-                                     min(Closest(amps_shuff[which(
-                                       amps_shuff$Hz %in% Hz), colname], cell))),
-                             paste0(colname, "_ntile")]]})})}) %>% #when there are multiple surrogate amplitudes that are equally close to the actual amplitude, take the smaller of the two amplitudes (associated with the more conservative p-value)
-        filter(row_number() == 1 + (sqrt(n()) + 1) *
-                 floor((row_number() - 1) / sqrt(n()))) %>%
-        mutate_at(vars(locations),
-                  list(~p.adjust(., method = input$mult_correcs) / .)) %>%
-        rename_all(paste0, "_ntile") %>%
-        cbind(amp_and_shf["Hz"]) %>%
-        safe_right_join(amps_shuff, by = "Hz", conflict = `*`)
-      
-      amp_and_shf <- locations %>%
-        map(~amp_and_shf %>%
-              select(starts_with(.x), Hz) %>%
-              group_by(Hz) %>%
-              filter_at(vars(ends_with("ntile")),
-                        any_vars((abs(. - input$α) == min(abs(. - input$α))))) %>%
-              select(ends_with(.x))) %>%
-        reduce(full_join, by = "Hz") %>%
-        ungroup() %>%
-        combine(amps %>% group_by(Hz) %>% summarise_at(vars(locations), mean),    #       average amplitude at each CTI for real (not surrogate) data, then merges that data with surrogate
-                names = (c("Significance Cutoff", "Observed Data"))) %>%
-        gather(Location, Power, -c(Hz, source)) %>%
-        right_join(gather(conf_int(amps, Hz), Location, Conf_Int, -Hz),
-                   by = c("Hz", "Location"))
-      
-      output$mygraph <- renderPlot({
-      (move_layers(cmbd_g(fft_g, ggplot(amp_and_shf, aes(Hz, Power, col = Location, linetype = source, 
-                                                        ymin = Power - Conf_Int, ymax = Power + Conf_Int, fill = Location))) +
-                     scale_linetype_manual(values = c("solid", "dashed")) +
-                     scale_x_continuous(name = "Frequency (Hz)", limits = c(0, input$xmax),
-                                        breaks = seq(0, input$xmax, ifelse(fft_x > .5, round(fft_x, 2), 1))) +
-                     labs(linetype = "",
-                          caption = paste("Significance threshold at p < ",
-                                          as.character(input$α))) +
-                     geom_ribbon(data = filter(amp_and_shf, source == "Observed Data"), alpha = 0.15, aes(color = NULL)) +
-                     geom_point(size = 3, data = amp_and_shf %>% spread(source, Power) %>%
-                                  filter(`Observed Data` > `Significance Cutoff`) %>%
-                                  select(-c(`Significance Cutoff`, Conf_Int)) %>%
-                                  gather(source, Power, -Hz, -Location), 
-                                aes(ymin = NULL, ymax = NULL)), "GeomRibbon", position = "bottom"))
-      }, height = 800, width = 1350)
+        output$mygraph <- renderPlot({
+          amp_and_shf2 <- amp_and_shf %>%
+            ggplot(aes(Hz, Power, col = Location,
+                       linetype = source, fill = Location,
+                       ymin = Power - Conf_Int,
+                       ymax = Power + Conf_Int)) %>%
+            cmbd_g(fft_g) +
+            scale_linetype_manual(values = c("solid", "dashed")) +
+            scale_x_continuous(name = "Frequency (Hz)",
+                               limits = c(0, input$xmax),
+                               breaks = seq(0, input$xmax, ifelse(fft_x > .5,
+                                                            round(fft_x, 2), 1))) +
+            labs(linetype = "",
+                 caption = paste("Significance threshold at p < ",
+                                 as.character(input$α))) +
+            geom_ribbon(data = filter(amp_and_shf, source == "Observed Data"),
+                        alpha = 0.15, aes(color = NULL)) +
+            geom_point(size = 3,
+                       data = amp_and_shf %>%
+                         spread(source, Power) %>%
+                         filter(`Observed Data` > `Significance Cutoff`) %>%
+                         select(-c(`Significance Cutoff`, Conf_Int)) %>%
+                         gather(source, Power, -Hz, -Location), 
+                       aes(ymin = NULL, ymax = NULL))
+          move_layers(amp_and_shf2, "GeomRibbon", position = "bottom")
+        }, height = 800, width = 1350)
       
     }
     
