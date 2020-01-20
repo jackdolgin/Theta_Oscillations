@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 # PsychoPy is required for this experiment
 
+from psychopy.hardware import keyboard
 from psychopy import locale_setup, prefs, gui, visual, core, data, event, logging, clock, prefs
 prefs.general['audioLib'] = ['pyo']
 from psychopy import sound
-import numpy as np  # whole numpy lib is available, prepend 'np.'
+import numpy as np                                                              # whole numpy lib is available, prepend 'np.'
 from numpy.random import random, randint, normal, shuffle
 import random
-import os  # handy system and path functions
-import sys  # to get file system encoding
+import os                                                                       # handy system and path functions
+import sys                                                                      # to get file system encoding
 import math
 from itertools import chain
 
@@ -18,19 +19,19 @@ os.chdir(_thisDir)
 
 # Store info about the experiment session
 expName = 'Theta_Oscillations_script.py'
-expInfo = {'participant': '', 'session': '', 'fill':''}     #creates dictionary of experiment information
-dlg = gui.DlgFromDict(dictionary = expInfo, title = expName)    #creates popup at beginning of experiment that asks for participant number
-if dlg.OK == False: #says, if you hit escape/click cancel when that popup appears, then don't run the experiment; if this if statement didn't exist, experiment would run regardly of whether you hit escape/click cancel
-    core.quit()  # user pressed cancel
-expInfo['date'] = data.getDateStr()  # add a simple timestamp
+expInfo = {'participant': '', 'session': '', 'fill':''}                         # creates dictionary of experiment information
+dlg = gui.DlgFromDict(dictionary = expInfo, title = expName)                    # creates popup at beginning of experiment that asks for participant number
+if dlg.OK == False:                                                             # says, if you hit escape/click cancel when that popup appears, then don't run the experiment; if this if statement didn't exist, experiment would run regardly of whether you hit escape/click cancel
+    core.quit()                                                                 # user pressed cancel
+expInfo['date'] = data.getDateStr()                                             # add a simple timestamp
 
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filename = _thisDir + os.sep + u'analysis/data/%s/%s' % (expInfo['participant'], expInfo['participant'])    #creates data file name
+filename = _thisDir + os.sep + u'analysis/data/%s/%s' % (expInfo['participant'], expInfo['participant']) #creates data file name
 # An ExperimentHandler isn't essential but helps with data saving
 thisExp = data.ExperimentHandler(extraInfo = expInfo, dataFileName = filename)
 # save a log file for detail verbose info
 logFile = logging.LogFile(filename + '.log', level = logging.EXP)
-logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file; unclear what this line does
+logging.console.setLevel(logging.WARNING)                                       # this outputs to the screen, not a file; unclear what this line does
 
 
 
@@ -47,7 +48,7 @@ logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a f
 ##--------------------------SETUP THE WINDOW----------------------------------##
 
 win = visual.Window(
-    size = (1024, 768), color = [.15, .15, .15], fullscr = False,
+    size = (1024, 768), color = [.15, .15, .15], fullscr = True,
     allowGUI = False, monitor = 'testMonitor', useFBO = True)
 # store frame rate of monitor
 f_rate = win.getActualFrameRate()
@@ -114,7 +115,7 @@ soundfiles = [os.path.join('stimuli', 'ding.wav'),
 
 ##-----------------------TARGET INTERVALS & DURATION SIZES--------------------##
 
-def to_frames(t): # converts time to frames accounting for the computer's refresh rate (aka framelength); the output is in frame rates
+def to_frames(t):                                                               # converts time to frames accounting for the computer's refresh rate (aka framelength); the output is in frame rates
     return int(round(t / win.monitorFramePeriod))
 
 stagger = to_frames(.0167 * 3)
@@ -136,15 +137,16 @@ def while_start(k):
         core.quit()
     # get current time
     t = trialClock.getTime()
-    frameN += 1  # number of completed frames (so 0 is the first frame)
-    key = event.getKeys(keyList = k)
+    frameN += 1                                                                 # number of completed frames (so 0 is the first frame)
+    key = kb.getKeys(keyList = k)
+
 
 def for_start():
     global frameN, continueRoutine
     frameN = -1
     continueRoutine = True
 
-def blockdelay(): # creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
+def blockdelay():                                                               # creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
     frameN = -1
     while frameN < to_frames(1.5):
         frameN += 1
@@ -159,13 +161,15 @@ def short_on_off(r):
 
 ##--------------------------------CREATE TIMERS-------------------------------##
 
-globalClock = core.MonotonicClock()  # to track the time since experiment started
-trialClock = core.Clock() #unlike globalclock, gets reset each trial
+kb = keyboard.Keyboard()
+
+globalClock = core.MonotonicClock()                                             # to track the time since experiment started
+trialClock = core.Clock()                                                       # unlike globalclock, gets reset each trial
 
 
 ##--------------------------------SET UP TRIAL COUNT--------------------------##
 
-def round_to_multiple(f, g): #so that the num of bins can be split among even-length blocks
+def round_to_multiple(f, g):                                                    # so that the num of bins can be split among even-length blocks
     return int(math.floor(f * 1.0 / g) * g)
 blocks = 8
 intervals = 16 # 48
@@ -173,7 +177,7 @@ intervals = round_to_multiple(intervals, blocks)
 appearances = 36 #12
 liltrials = intervals * appearances
 
-percent_catch = .1      #if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
+percent_catch = .1                                                              # if value gets too high script will quit out, since the step in the range function will equal 0 which isn't allowed
 
 catchtrials = round_to_multiple((percent_catch * liltrials) / (1 - percent_catch), 6) # 6 is because of a 2x3 during catch trials- invalid locations x absent locations
 total_trials = liltrials + catchtrials
@@ -181,17 +185,16 @@ trialsperblock = total_trials / blocks
 
 validity = .7
 num_squares = 4 - extra_task
-num_square_multiple = round_to_multiple(validity * appearances, num_squares) # number of times we can guarantee every interval is valid at each square
+num_square_multiple = round_to_multiple(validity * appearances, num_squares)    # number of times we can guarantee every interval is valid at each square
 extra_valids = int((validity * liltrials - (num_square_multiple * intervals)) / num_squares) # for our desired percent of valid trials, some `appearances` had to include both valid and invalid trials-and then we randomized the intervals assigned to these two 'mixed' appearances
 extra_invalids = intervals - extra_valids
-print "extra_valids = " + str(extra_valids)
-print "extra_invalids = " + str(extra_invalids)
+
 wmarith_freq = .3
 wmarith_trials = int(total_trials * wmarith_freq)
 no_wmarith_trials = total_trials - wmarith_trials
 
 ptrials = 20
-qpractice = 15 # target detection trials that are purely practice and don't contribute to the staircasing
+qpractice = 15                                                                  # target detection trials that are purely practice and don't contribute to the staircasing
 qtrials = 30
 pcutoff = 70
 qcutoff = 35
@@ -210,34 +213,14 @@ for i in range(len(key_attr)):
     # d[one_attr[0]] = one_attr[1:len(one_attr)]
 
 def most_inval(which_attr, r):
-    attr = d[which_attr] # dictionary taking either an `x` or `y` input spits out the list of possible x or y coordinates (e.g. [-1, 0, 1] for `x`)
-    def toss_square(o): # creates invalid cues/bulges
-        direction = -1 if which_attr == "all_squares" else 1 # flips presented order of absent squares so they are in 'antiphase' with bulge at that location
+    attr = d[which_attr]                                                        # dictionary taking either an `x` or `y` input spits out the list of possible x or y coordinates (e.g. [-1, 0, 1] for `x`)
+    def toss_square(o):                                                         # creates invalid cues/bulges
+        direction = -1 if which_attr == "all_squares" else 1                    # flips presented order of absent squares so they are in 'antiphase' with bulge at that location
         return list((attr[:o] + attr[o + 1:])[::direction])
     extra_list = []
     invalid_list = []
     hmm = ((appearances - num_square_multiple - num_squares) / (num_squares))
-    print "attr"
-    print which_attr
-    print attr
-    print "hmm = " + str(hmm)
-    # for i in list(range(len(attr))):
-    #     extra_inval = toss_square(i)
-    #     if r == "partially_inval":
-    #         if which_attr == "x_coords" or which_attr == "y_coords":
-    #             extra_list.append(np.asarray([attr[i]] * extra_valids + extra_inval * (extra_invalids / len(extra_inval)))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
-    #         elif which_attr == "all_squares":
-    #             extra_list.append(np.asarray(extra_inval * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval))))
-    #         filler = ((appearances - num_square_multiple - num_squares) / (num_squares)) * intervals / len(extra_inval)
-    #         print "attr = "
-    #         print attr
-    #         print toss_square(i)
-    #         for k in list(range(len(attr))):
-    #             invalid_list.append(toss_square(k) * (filler / len(attr)))
-    #     elif r == "all_valid":
-    #         filler = intervals * num_square_multiple / (num_squares * len(extra_inval))
-    #         invalid_list.append(extra_inval * filler)
-    # return np.concatenate(extra_list + invalid_list)
+
     if which_attr == "all_squares":
         if r == "partially_inval":
             for i in list(range(len(attr))):
@@ -247,17 +230,10 @@ def most_inval(which_attr, r):
                 for k in list(range(len(attr))):
                     invalid_list.append(toss_square(k) * (filler / len(attr)))
         elif r == "all_valid":
-            print "holloween"
             for i in list(range(len(attr))):
                 extra_inval = toss_square(i)
                 filler = intervals * num_square_multiple / (num_squares * len(extra_inval))
                 invalid_list.append(extra_inval * filler)
-            print "rowads"
-            print np.concatenate(extra_list + invalid_list)
-            print "bond"
-            print np.concatenate(extra_list + invalid_list)
-            # return np.concatenate(invalid_list)
-            print "Ribbet"
     elif which_attr == "x_coords" or which_attr == "y_coords":
         for i in list(range(len(attr))):
             extra_inval = toss_square(i)
@@ -269,14 +245,12 @@ def most_inval(which_attr, r):
     return np.concatenate(extra_list + invalid_list)
 
 def peat_intervals(p, q):
-    return np.repeat(p, intervals * q) # repeat each location of the cue/target (`p`) `q` interval sets
+    return np.repeat(p, intervals * q)                                          # repeat each location of the cue/target (`p`) `q` interval sets
 
 def peat_catch(p, q):
-    return np.repeat(p * q, int(catchtrials / (num_squares * q))) # repeat catch trials for `p` number of trials
+    return np.repeat(p * q, int(catchtrials / (num_squares * q)))               # repeat catch trials for `p` number of trials
 num_square_quotient = num_square_multiple / num_squares
-print "num_square_multiple = " + str(num_square_multiple)
-print "num_square_quotient = " + str(num_square_quotient)
-print np.repeat(d["x_coords"], num_square_quotient)
+
 target_x = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["x_coords"], num_square_quotient), np.tile(d["x_coords"], (appearances - num_square_multiple) / num_squares))), 1), peat_catch(d["x_coords"], 1)))
 bulge_x = np.concatenate((peat_intervals(d["x_coords"], num_square_quotient), most_inval("x_coords", "partially_inval"), peat_catch(d["x_coords"], 1)))
 bulge_y = np.concatenate((peat_intervals(d["y_coords"], num_square_quotient), most_inval("y_coords", "partially_inval"), peat_catch(d["y_coords"], 1)))
@@ -287,7 +261,7 @@ absent_list = np.concatenate((most_inval("all_squares", "all_valid"), most_inval
 intervals_range = list(range(0, intervals * stagger, stagger))
 lil_timing = list(chain.from_iterable([random.sample(intervals_range, len(intervals_range)) for i in list(range(appearances))])) # randomizes order of CTI's for each set of 48; so all 48 appear before the next set, but the order for each 48 is random from set to set
 
-if catchtrials > intervals:  # spaces out when the lilsquare comes on after the bulge for catch trials
+if catchtrials > intervals:                                                     # spaces out when the lilsquare comes on after the bulge for catch trials
     catch_timing = [round(i * intervals * 1.0 / (catchtrials - intervals)) for i in list(range(0, (catchtrials - intervals)))]
     catch_timing += list(range(0, intervals * stagger, stagger))
 else:
@@ -336,25 +310,23 @@ np.random.shuffle(wmarith)
 
 ##-----------------------CREATE EXPERIMENT MATRIX-----------------------------##
 
-expmatrix = [target_x, # side of screen of lil
-            bulge_x, # side of screen of bulge
-            bulge_y, # y-value of bulge
-            my_randomize(), # randomize target's x value
-            my_randomize(), # randomize target's y value
-            [opacity] * liltrials + [0] * catchtrials, #opacity of lil
-            lil_timing + catch_timing, # CTI interval for each trial
-            target_y, # y value of lil,
-            absent_list, # absent big square (unless task == 3)
-            wmarith, # whether wm/arithmetic present
-            sumlist, # arithmetic questions (if they're called)
-            corrlist] # whether the answer to the arithmetic question (if it's called) is correct
+expmatrix = [target_x,                                                          # side of screen of lil
+            bulge_x,                                                            # side of screen of bulge
+            bulge_y,                                                            # y-value of bulge
+            my_randomize(),                                                     # randomize target's x value
+            my_randomize(),                                                     # randomize target's y value
+            [opacity] * liltrials + [0] * catchtrials,                          #opacity of lil
+            lil_timing + catch_timing,                                          # CTI interval for each trial
+            target_y,                                                           # y value of lil
+            absent_list,                                                        # absent big square (unless task == 3)
+            wmarith,                                                            # whether wm/arithmetic present
+            sumlist,                                                            # arithmetic questions (if they're called)
+            corrlist]                                                           # whether the answer to the arithmetic question (if it's called) is correct
 
 #randomization sequence
 randomseq = list(range(int(total_trials)))
 np.random.shuffle(randomseq)
-print expmatrix
-for i in range(12):
-    print len(expmatrix[i])
+
 def big_opacity(s):
     return globals()["square_{0}".format(square_absent)].setOpacity(s)
 
@@ -518,7 +490,7 @@ def inst_loop(q):
 
 ##---------------------START PRACTICE INSTRUCTIONS----------------------------##
 
-advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
+advance = 0                                                                     # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
 
 while advance < 8 - 2 * (extra_task - 1):
     if event.getKeys(keyList = ["space"]):
@@ -565,8 +537,8 @@ repstaircase = []
 # the 4 (potential) reps stand for practice arithmetic rep, practice staircase rep, staircase rep, and then main experiment rep
 for rep in list(range(extra_task - 1, 4)):
 
-    rep_acc = "NA" # just a placeholder really/ arbitrary value so we can enter the while loop
-    loopscompleted = 0 # no practice trial restarts at beginning of each rep
+    rep_acc = "NA"                                                              # just a placeholder really/ arbitrary value so we can enter the while loop
+    loopscompleted = 0                                                          # no practice trial restarts at beginning of each rep
 
     if rep == 0:
         abbr = "p"
@@ -578,7 +550,7 @@ for rep in list(range(extra_task - 1, 4)):
 
         if rep == 0 or rep == 2:
             if rep == 2 and loopscompleted == 0 and extra_task == 0:
-                short_on_off('secondpractice') # present instructions for second practice block (aka staircasing)
+                short_on_off('secondpractice')                                  # present instructions for second practice block (aka staircasing)
             elif loopscompleted > 0:
                 if rep == 0:
                     task_text = wm_arith_task
@@ -586,7 +558,7 @@ for rep in list(range(extra_task - 1, 4)):
                 elif rep == 2:
                     task_text = "visual attention"
                     task_reminder = ", when the target appears, indicate which square it was in by pressing the " + inst68_help + " arrow key for the respective square. If you do not see a target, indicate this by not pressing any button."
-                    startThresh += .2 # increases opacity of starting opacity each they miss accuracy threshold
+                    startThresh += .2                                           # increases opacity of starting opacity each they miss accuracy threshold
 
 
                 ##----TELL PTCPT TO SEE EXPERIMENTER BEFORE 2ND RESTART-------##
@@ -609,10 +581,10 @@ for rep in list(range(extra_task - 1, 4)):
             rep_acc = "break out of while after one run-through"
             if rep == 3:
                 block_count = blocks
-                np.random.shuffle(randomseq) # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
+                np.random.shuffle(randomseq)                                    # reshuffle the order of trials so that practice/staircase trials are not in the same order as experimental trials
 
                 continueRoutineInst = True
-                advance = 0 # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
+                advance = 0                                                     # a variable that advances the instruction screen, as well as lets them go back to see a previous instruction screen
                 while continueRoutineInst:
                     if event.getKeys(keyList = ["space"]):
                         advance += 1
@@ -659,7 +631,7 @@ for rep in list(range(extra_task - 1, 4)):
 
                     blockdelay()
 
-            blocktrialcount = 0 # count number of trials in the block to not present wm/arith probe on the first trial
+            blocktrialcount = 0                                                 # count number of trials in the block to not present wm/arith probe on the first trial
 
 
 
@@ -670,7 +642,7 @@ for rep in list(range(extra_task - 1, 4)):
 
             for trial in trials:
                 for_start()
-                cross.setAutoDraw(True) # cross begins on screen; is located outside of while loop since it is on screen the entire trial
+                cross.setAutoDraw(True)                                         # cross begins on screen; is located outside of while loop since it is on screen the entire trial
                 lenkeylist = 0
                 overalltime = globalClock.getTime()
                 blocktrialcount += 1
@@ -681,7 +653,7 @@ for rep in list(range(extra_task - 1, 4)):
                 if rep == 0 or rep == 1:
                     trialopacity = opacity * startThresh
                 elif rep == 2:
-                    trialopacity = opacity * trial # trial here refers to the updated value in the staircase, not the actual trial number
+                    trialopacity = opacity * trial                              # trial here refers to the updated value in the staircase, not the actual trial number
                     trial = ptrials + qpractice
                     ptrials += 1
                 elif rep == 3:
@@ -689,10 +661,10 @@ for rep in list(range(extra_task - 1, 4)):
                     if extracted_opacity != 0:
                         if noncatch_count > 0 and noncatch_count % running_staircase_length == 0: # checks whether it's been 'running_staircase_length' number of experimental trials since the last resetting of opacity/staircase and therefore time to reset it
                             repstair_avg = sum(repstaircase) * 1.0 / len(repstaircase) # repstaircase is the average accuracy over the last 'running_staircase_length' experimental trials
-                            q_opacity += .6 * (acc_aim - repstair_avg) # either increases or decreases the staircase by .6 opacity * the difference between the hoped-for accuracy and the average accuracy on the  last 'running_staircase_length' experimental trials
+                            q_opacity += .6 * (acc_aim - repstair_avg)          # either increases or decreases the staircase by .6 opacity * the difference between the hoped-for accuracy and the average accuracy on the  last 'running_staircase_length' experimental trials
                             repstaircase = []
-                        noncatch_count += 1 # counts number of experimental (non-catch) trials before re-implementing staircase/ updated opacity
-                    trialopacity = extracted_opacity * q_opacity # whether no opacity * threshold
+                        noncatch_count += 1                                     # counts number of experimental (non-catch) trials before re-implementing staircase/ updated opacity
+                    trialopacity = extracted_opacity * q_opacity                # whether no opacity * threshold
 
                 lilsquare.setOpacity(trialopacity)
 
@@ -707,7 +679,7 @@ for rep in list(range(extra_task - 1, 4)):
 
                 ##----------------SET TARGET & BULGE LOCATIONS----------------##
 
-                lil_side = expmatrix[0][randomseq[trial]] # right now is just -1s, 0s, and 1s
+                lil_side = expmatrix[0][randomseq[trial]]                       # right now is just -1s, 0s, and 1s
                 lil_height = expmatrix[7][randomseq[trial]]
                 lilsquare.setPos([lil_side * sides_x + expmatrix[3][randomseq[trial]], lil_height + expmatrix[4][randomseq[trial]]])
                 bulge_side = expmatrix[1][randomseq[trial]]
@@ -729,7 +701,8 @@ for rep in list(range(extra_task - 1, 4)):
 
                 ##-------------------RESET TRIAL CLOCK------------------------##
 
-                trialClock.reset()  # clock
+                trialClock.reset()                                              # trial timer re(starts)
+                kb.clock.reset()                                                # rt timer re(starts)
 
 
 
@@ -767,7 +740,7 @@ for rep in list(range(extra_task - 1, 4)):
                     elif frameN == squareend:
                         key = ['nope']
                     if len(key) > 0:
-                        if frameN < lilstart:
+                        if frameN < lilend:
                             lenkeylist += 1
                         else:
                             for a_stim in [square_right, square_left, square_bottom][0:len(d["x_coords"])]:
@@ -779,16 +752,16 @@ for rep in list(range(extra_task - 1, 4)):
                             check_correct((key == ['nope'] and trialopacity == 0) or (key[0] == main_keys[0] and lil_side == -1) or (key[0] == main_keys[1] and lil_side == 0) or (key[0] == main_keys[2] and lil_side == 1))
                             if rep == 2:
                                 trials.addResponse(acc)
-                                acclist.append(acc) # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
+                                acclist.append(acc)                             # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
 
 
-                    event.clearEvents()     # Clear the previously pressed keys; too-early key presses will automatically register as incorrect
+                    event.clearEvents()                                         # Clear the previously pressed keys; too-early key presses will automatically register as incorrect
 
 
                     ##--------CHECK ALL IF COMPONENTS HAVE FINISHED-----------##
 
                     win.flip()
-                    if not continueRoutine:  # a component has requested a forced-end of Routine
+                    if not continueRoutine:                                     # a component has requested a forced-end of Routine
                         break
 
 
@@ -829,7 +802,7 @@ for rep in list(range(extra_task - 1, 4)):
                     ['lilsquareEndTime', lilsquare.tEnd],
                     ['lilsquareEndFrame', lilsquare.frameEnd],
                     ['lilafterflash', lilafterbulge],
-                    ['ButtonPressTime', t],
+                    ['ButtonPressTime', key[0].rt],
                     ['Key', key[0]],
                     ['false_presses', lenkeylist],
                     ['Acc', acc],
@@ -871,7 +844,8 @@ for rep in list(range(extra_task - 1, 4)):
 
                         ##-----------------RESET TRIAL CLOCK----------------------##
 
-                        trialClock.reset()  # clock
+                        trialClock.reset()                                      # trial timer re(starts)
+                        kb.clock.reset()                                        # rt timer re(starts)
 
 
 
@@ -896,13 +870,13 @@ for rep in list(range(extra_task - 1, 4)):
                                 else:
                                     check_correct(correct_wmarith())
                                     if rep == 0 and trial > 10:
-                                        acclist.append(acc) # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
+                                        acclist.append(acc)                     # creates list of practice accuracies which determine whether participant met the cutoff for moving onto the experimental trials
 
 
                             ##-------CHECK ALL IF COMPONENTS HAVE FINISHED--------##
 
                             win.flip()
-                            if not continueRoutine:  # a component has requested a forced-end of Routine
+                            if not continueRoutine:                             # a component has requested a forced-end of Routine
                                 break
 
 
@@ -912,7 +886,7 @@ for rep in list(range(extra_task - 1, 4)):
                         wmarith_probe.setAutoDraw(False)
 
                         sound_clip.setSound(soundp)
-                        sound_clip.play() #correct and incorrect sounds are both 250 ms
+                        sound_clip.play()                                       # correct and incorrect sounds are both 250 ms
 
 
                     ##-------------------RECORD DATA------------------------------##
@@ -921,7 +895,7 @@ for rep in list(range(extra_task - 1, 4)):
                     save_data(True, [
                         ['wmarith_probeStartTime', 'wmarith_probetStart'],
                         ['wmarith_probeStartFrame', 'wmarith_probeframeStart'],
-                        ['ButtonPressTime_wmarith', 't'],
+                        ['ButtonPressTime_wmarith', 'key[0].rt'],
                         ['Key_wmarith', 'key_press'],
                         ['false_presses_wmarith', 'lenkey_wmarith'],
                         ['Acc_wmarith', 'acc'],
@@ -948,6 +922,6 @@ thisExp.saveAsWideText(filename + '.csv')
 thisExp.saveAsPickle(filename)
 logging.flush()
 # make sure everything is closed down
-thisExp.abort()  # or data files will save again on exit
+thisExp.abort()                                                                 # or data files will save again on exit
 win.close()
 core.quit()

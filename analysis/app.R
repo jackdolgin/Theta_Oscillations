@@ -112,8 +112,8 @@ server <- function(input, output, session) {
         filter(Trial > 0) %>%                                                   # Prunes practice trials
         mutate(Stim_Sides = as.character(
                  ifelse(CorrSide == FlashSide, "Valid", "Invalid")),            # Creates column indicating whether cue was valid or invalid
-               CTI = RoundTo(RoundTo(lilsquareStartTime - flash_circleEndTime,
-                                1 / 60), input$samp_per),
+               CTI = (lilsquareStartTime - flash_circleEndTime) %>%
+                 RoundTo(1 / 60) %>% RoundTo(input$samp_per),
                block = RoundTo(Trial, blocksize, ceiling) / blocksize,          # Creates column indicating trial's block
                RT = ifelse(Acc == 1 & ButtonPressTime - lilsquareStartTime > .1,#                           RT after target appeared on screen, only for correct trials with an RT > 100 ms
                       ButtonPressTime - lilsquareStartTime, NA)) %>%
@@ -126,13 +126,11 @@ server <- function(input, output, session) {
                Opacity != 0) %>%                                                #        catch trials
         filter(mean(Acc[Stim_Sides == "Invalid"],                                 #        participants whose invalid trial accuracy is...
                     na.rm = TRUE) >= input$invalid_floor) %>%                           #        ...below desired threshold
-        mutate(CorrSide = case_when(CorrSide == 1 ~ "Right",                    #                           which side the target appeared on
-                               CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
-               Stim_Sides = case_when(input$iso_sides ~ paste(CorrSide, Stim_Sides,  # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`
-                                                              sep = "_"),           # to include which side of screen target was on,
-                                      TRUE ~ Stim_Sides)) %>%                       # as well as whether it was valid with cue; if `iso_sides` parameter == `FALSE`, leaves `StimSides`
-                                                                                    # unchanged
-        # mutate(Acc_wmarith = ifelse(session == "4", Acc_wmarith, NA)) %>%
+        mutate(CorrSide = case_when(                                              # Creates column indicating which side the target appeared on
+          CorrSide == 1 ~ "Right", CorrSide == -1 ~ "Left", TRUE ~ "Bottom"),
+               Stim_Sides = case_when(                                                 # Overwrites `Stim_Sides` column if `sep_vis_fidels` parameter == `TRUE`...
+                 input$iso_sides ~ paste(CorrSide, Stim_Sides,  sep = "_"),                  # to include which side of screen target was on,...    
+                 TRUE ~ Stim_Sides)) %>%                          # ... as well as whether it was valid with cue; if `iso_sides` == `FALSE`, leaves `StimSides` unchanged
         group_by(CorrSide) %>%
         mutate(Side_Acc = mean(Acc, na.rm = TRUE)) %>%
         ungroup() %>%
@@ -142,8 +140,8 @@ server <- function(input, output, session) {
                Side_Diff <= input$side_bias,                                    #                     whose hit rate at one visual field - another visual field is > `side_bias`
                wm_Acc >= input$wm_floor) %>%                                    #                           working memory task accuracy is < `wm_floor`
         mutate(Acc_prefilter = mean(Acc, na.rm = TRUE)) %>%                     # Creates column indicating mean accuracy before we've filtered for `block_range`, unlike `Acc_postfilter`
-        filter(between(Acc_prefilter, input$pre_range[1], input$pre_range[2],   # Prunes participants whose non-catch, pre-block-filtering accuracy is outside of desired range
-                       incbounds = TRUE),
+        filter(Acc_prefilter %>%                                                  # Prunes participants whose non-catch, pre-block-filtering accuracy is outside of desired range
+                 between(input$pre_range[1], input$pre_range[2], incbounds = TRUE),
                between(CTI, min(input$CTI_range), max(input$CTI_range))) %>%    #        trials outside of desired CTI range
         group_by(block) %>%
         mutate(block_acc = mean(Acc)) %>%                                       # Creates column indicating block's mean accuracy
@@ -153,11 +151,9 @@ server <- function(input, output, session) {
         group_by(miniblock) %>%
         mutate(miniblock_avg = mean(Acc)) %>%
         ungroup() %>%
-        mutate_at(vars(Acc, RT),
-                  list(~ifelse(between(block_acc, input$block_range[1],         # Changes `Acc` and `RT` column values to NA if trial's
-                                       input$block_range[2]) &                  # block accuracy outside of `block_range`
-                                 between(miniblock_avg, input$miniblock_range[1], # or miniblock was not in the desired range
-                                         input$miniblock_range[2]), ., NA))) %>% # or block was not in `blocks_desired`
+        mutate_at(vars(Acc, RT), list(~ifelse(                                    # Changes `Acc` and `RT` column values to NA if...
+          between(block_acc, input$block_range[1], input$block_range[2]) & between(           #  ... trial's block accuracy outside of `block_range`...
+            miniblock_avg, input$miniblock_range[1], input$miniblock_range[2]), ., NA))) %>%
         # mutate_at(vars(Acc, RT), list(~ifelse(session != "4"  | Acc_wmarith == 1, ., NA))) %>%
         mutate(Trials_filtered_out = sum(is.na(Acc)) / n(),
                Acc_postfilter = mean(Acc, na.rm = TRUE)) %>%                    # Creates column indicating mean accuracy for non-catch trials; note this is after before we've filtered
@@ -210,7 +206,7 @@ server <- function(input, output, session) {
         group_by(participant, samp_shuff) %>%
         mutate_at(vars(locations),
                   list(~ case_when("Detrending" %in% input$trends ~                     # If `Detrending` selected...
-                                     . - (polyfit(CTI, ., 2) %>% polyval(CTI )),        # detrend with this formula...
+                                     . - (polyfit(CTI, ., 2) %>% polyval(CTI)),        # detrend with this formula...
                                    TRUE ~ .))) %>%                                # otherwise ignore
         mutate_at(vars(locations), list(~case_when("Demeaning" %in% input$trends ~      # Works just like the detrending except for demeaning
                                                      . - mean(.), TRUE ~ .))) %>%
@@ -319,8 +315,12 @@ server <- function(input, output, session) {
         ggplot(aes(Hz, Power, color = Flash_and_or_field)) %>%
         idvl_g(fft_g) +
         geom_line() +
-        scale_x_continuous(name = "Frequency (Hz)", limits = c(0, input$xmax),
-                           breaks = seq(0, input$xmax, ifelse(input$xmax > 10 | input$xmax != xaxis_r, 1/max(Closest(xaxis_r/ seq(fft_x, xaxis_r, fft_x), 5) /xaxis_r), fft_x))) +
+        scale_x_continuous(
+          name = "Frequency (Hz)", limits = c(0, input$xmax), breaks = seq(
+            0, input$xmax, ifelse(input$xmax > 10 | input$xmax != xaxis_r,
+                            xaxis_r %>% `/`(seq(fft_x, xaxis_r, fft_x)) %>%
+                              Closest(5) %>% `/` (xaxis_r) %>% max %>% `^` (-1),
+                            fft_x))) +
         labs(caption = paste("Data from", as.character(length(pcpts)),
                              "participants")) +
         geom_text(data = as.data.frame(plot_label), inherit.aes = FALSE, size = 2.5,# Sets location for label overlayed onto graph
@@ -340,10 +340,10 @@ server <- function(input, output, session) {
       amps_shuff <- map_dfr(1:input$shuff, function(x){
         set.seed(x)
         cmbd_w %>%
-          group_by(participant) %>%
-          sample_n(length(CTIs), weight = CTI) %>%
-          mutate_at(vars(CTI), list(~round(seq(min(CTIs), max(CTIs), input$samp_per), 2)))
-      }) %>%                                                                      # ... randomizing, thereby randomizing CTI vs. performance
+          group_by(participant) %>%                                               # The three lines randomize row order of CTI's for each participant; `group_by` is for  shuffling only...
+          sample_n(n()) %>%                                                       # ... within rows with the same particpant number; `mutate_at` below allows shuffling only for CTI...
+          mutate_at(vars(CTI), list(~seq(min(CTIs), max(CTIs), samp_per)))        # ... column; specifically, keeps rows intact except resets CTI's in descending order, even though...
+      }) %>%                                                                      # ... previous line was just randomizing, thereby randomizing CTI vs. performance
         amplitude(shuff, "Location", "Power",                                     # Tabulates amplitude for each participant's data for `shuff` number of shuffles
                   c("Hz", "samp_shuff", "Location")) %>%
         summarise_at(vars(Power), mean) %>%                                       # Finds average amplitude at each CTI across all participants per shuffle
