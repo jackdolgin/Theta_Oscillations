@@ -350,7 +350,7 @@ main_function(averaging = "Aggregate",                                          
               
               visualize = "Aggregate",                                          # Either `Individual` or `Aggregate`
               
-              batch = "4a",                                                     # Either `1a`, `1b`, `2a`, `2b`, `2c`, `3a`, or `4a`
+              batch = "3a",                                                     # Either `1a`, `1b`, `2a`, `2b`, `2c`, `3a`, or `4a`
               
               wm_exp = FALSE,                                                   # Either `FALSE` or `TRUE` for working memory participants
               
@@ -372,7 +372,7 @@ main_function(averaging = "Aggregate",                                          
               
               α = .05,                                                          # The alpha threshold to use for drawing the significance cutoff on the graphs
               
-              shuff = 50000,                                                    # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this...
+              shuff = 50,                                                    # The number of surrogate shuffles to use to determine the null hypothesis; NOTE: increasing this...
                                                                                 # ... number slows down the run time
               
               mult_correcs = "BH",                                              # Choose between the following types of multiple corrections: `holm`, `hochberg`, `hommel`, ...  
