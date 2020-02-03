@@ -103,7 +103,7 @@ shapecolor = [.05, .05, .05]
 crosscolor = [1, 1, 1]
 lilcolor = [-.55, -.55, -.55]
 
-opacity = .16
+opacity = .1
 
 
 ##---------------------------SOUND NOISE & LOUDNESS---------------------------##
@@ -140,11 +140,12 @@ def while_start(k):
     frameN += 1                                                                 # number of completed frames (so 0 is the first frame)
     key = kb.getKeys(keyList = k)
 
-
 def for_start():
-    global frameN, continueRoutine
+    global frameN, continueRoutine, key_press, rt
     frameN = -1
     continueRoutine = True
+    key_press = 'nope'
+    rt = 1 #rewrite so it's in terms of existing variables
 
 def blockdelay():                                                               # creates a slight delay after the instruction screen and before the start of each block so the onset of the block's first trial isn't too sudden
     frameN = -1
@@ -181,7 +182,7 @@ percent_catch = .1                                                              
 
 catchtrials = round_to_multiple((percent_catch * liltrials) / (1 - percent_catch), 6) # 6 is because of a 2x3 during catch trials- invalid locations x absent locations
 total_trials = liltrials + catchtrials
-trialsperblock = total_trials / blocks
+trialsperblock = int(total_trials / blocks)
 
 validity = .7
 num_squares = 4 - extra_task
@@ -219,29 +220,29 @@ def most_inval(which_attr, r):
         return list((attr[:o] + attr[o + 1:])[::direction])
     extra_list = []
     invalid_list = []
-    hmm = ((appearances - num_square_multiple - num_squares) / (num_squares))
+    hmm = (int((appearances - num_square_multiple - num_squares) / (num_squares)))
 
     if which_attr == "all_squares":
         if r == "partially_inval":
             for i in list(range(len(attr))):
                 extra_inval = toss_square(i)
-                extra_list.append(np.asarray(extra_inval * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval)))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
+                extra_list.append(np.asarray(extra_inval * int((extra_valids / (len(extra_inval)))) + extra_inval * int((extra_invalids / len(extra_inval))))) # repeat each combo of invalid x or y coordinates to fill up the valid and invalid trials in one 'mixed' interval-sets; loop three times for the three interval-sets)
                 filler = ((appearances - num_square_multiple - num_squares) / num_squares) * intervals / len(extra_inval)
                 for k in list(range(len(attr))):
-                    invalid_list.append(toss_square(k) * (filler / len(attr)))
+                    invalid_list.append(toss_square(k) * int((filler / len(attr))))
         elif r == "all_valid":
             for i in list(range(len(attr))):
                 extra_inval = toss_square(i)
                 filler = intervals * num_square_multiple / (num_squares * len(extra_inval))
-                invalid_list.append(extra_inval * filler)
+                invalid_list.append(extra_inval * int(filler))
     elif which_attr == "x_coords" or which_attr == "y_coords":
         for i in list(range(len(attr))):
             extra_inval = toss_square(i)
-            extra_list.append(np.asarray([attr[i]] * (extra_valids / (len(extra_inval))) + extra_inval * (extra_invalids / len(extra_inval))))
+            extra_list.append(np.asarray([attr[i]] * int((extra_valids / (len(extra_inval)))) + extra_inval * int((extra_invalids / len(extra_inval)))))
             ganoosh = (appearances - num_square_multiple - num_squares) / num_squares
             filler = ganoosh * intervals / len(extra_inval)
-            for k in list(range(i * ganoosh, (i + 1) * ganoosh)):
-                invalid_list.append(toss_square(k % num_squares) * (filler / ganoosh))
+            for k in list(range(i * int(ganoosh), (i + 1) * int(ganoosh))):
+                invalid_list.append(toss_square(k % num_squares) * int((filler / ganoosh)))
     return np.concatenate(extra_list + invalid_list)
 
 def peat_intervals(p, q):
@@ -251,11 +252,11 @@ def peat_catch(p, q):
     return np.repeat(p * q, int(catchtrials / (num_squares * q)))               # repeat catch trials for `p` number of trials
 num_square_quotient = num_square_multiple / num_squares
 
-target_x = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["x_coords"], num_square_quotient), np.tile(d["x_coords"], (appearances - num_square_multiple) / num_squares))), 1), peat_catch(d["x_coords"], 1)))
+target_x = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["x_coords"], num_square_quotient), np.tile(d["x_coords"], int((appearances - num_square_multiple) / num_squares)))), 1), peat_catch(d["x_coords"], 1)))
 bulge_x = np.concatenate((peat_intervals(d["x_coords"], num_square_quotient), most_inval("x_coords", "partially_inval"), peat_catch(d["x_coords"], 1)))
 bulge_y = np.concatenate((peat_intervals(d["y_coords"], num_square_quotient), most_inval("y_coords", "partially_inval"), peat_catch(d["y_coords"], 1)))
 
-target_y = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["y_coords"], num_square_quotient), np.tile(d["y_coords"], (appearances - num_square_multiple) / num_squares))), 1), peat_catch(d["y_coords"], 1)))
+target_y = np.concatenate((peat_intervals(np.concatenate((np.repeat(d["y_coords"], num_square_quotient), np.tile(d["y_coords"], int((appearances - num_square_multiple) / num_squares)))), 1), peat_catch(d["y_coords"], 1)))
 
 absent_list = np.concatenate((most_inval("all_squares", "all_valid"), most_inval("all_squares", "partially_inval"), peat_catch(d["all_squares"][::-1], 2)))
 intervals_range = list(range(0, intervals * stagger, stagger))
@@ -299,7 +300,6 @@ def check_correct(q):
     else:
         acc = 0
         soundp = soundfiles[1]
-    continueRoutine = False
 
 combined = list(zip(sumlist, corrlist))
 random.shuffle(combined)
@@ -618,7 +618,7 @@ for rep in list(range(extra_task - 1, 4)):
                     pThreshold = acc_aim, gamma = 0.05,
                     nTrials = qtrials, minVal = .01, maxVal = 4)
             elif rep == 3:
-                startingtrial = block * trialsperblock
+                startingtrial = int(block * trialsperblock)
                 trials = list(range(startingtrial, startingtrial + trialsperblock)) # shift trials from qwest/practice to total trials / blocks
 
                 # set up screen between blocks showing how many blocks are left
@@ -702,7 +702,6 @@ for rep in list(range(extra_task - 1, 4)):
                 ##-------------------RESET TRIAL CLOCK------------------------##
 
                 trialClock.reset()                                              # trial timer re(starts)
-                kb.clock.reset()                                                # rt timer re(starts)
 
 
 
@@ -713,6 +712,14 @@ for rep in list(range(extra_task - 1, 4)):
 
                 while continueRoutine and frameN <= squareend:
                     while_start(main_keys)
+                    
+                    if frameN > bulge_end and len(key) > 0:
+                        if frameN >= lilstart and key[0].rt >= 0:
+                            key_press = key[0].name
+                            rt = key[0].rt
+                            continueRoutine = False
+                        else:
+                            lenkeylist += 1
 
                     ##----------------SHAPES UPDATE---------------------------##
 
@@ -733,30 +740,11 @@ for rep in list(range(extra_task - 1, 4)):
                         lilsquare.tStart = t
                         lilsquare.frameStart = frameN
                         lilsquare.setAutoDraw(True)
-                    elif frameN == lilend:
+                        kb.clock.reset()                                                # rt timer re(starts)
+                    if frameN == lilend or (frameN < lilend and continueRoutine == False):
                         lilsquare.setAutoDraw(False)
                         lilsquare.tEnd = t
                         lilsquare.frameEnd = frameN
-                    elif frameN == squareend:
-                        key = ['nope']
-                    if len(key) > 0:
-                        if frameN < lilend:
-                            lenkeylist += 1
-                        else:
-                            for a_stim in [square_right, square_left, square_bottom][0:len(d["x_coords"])]:
-                                a_stim.setAutoDraw(False)
-
-
-                            ##-------------CHECK FOR RESPONSE-----------------##
-
-                            check_correct((key == ['nope'] and trialopacity == 0) or (key[0] == main_keys[0] and lil_side == -1) or (key[0] == main_keys[1] and lil_side == 0) or (key[0] == main_keys[2] and lil_side == 1))
-                            if rep == 2:
-                                trials.addResponse(acc)
-                                acclist.append(acc)                             # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
-
-
-                    event.clearEvents()                                         # Clear the previously pressed keys; too-early key presses will automatically register as incorrect
-
 
                     ##--------CHECK ALL IF COMPONENTS HAVE FINISHED-----------##
 
@@ -772,9 +760,22 @@ for rep in list(range(extra_task - 1, 4)):
                     big_opacity(1)
 
 
+                ##-------------CHECK FOR RESPONSE-----------------##
+
+                check_correct((key_press == 'nope' and trialopacity == 0) or (key_press == main_keys[0] and lil_side == -1) or (key_press == main_keys[1] and lil_side == 0) or (key_press == main_keys[2] and lil_side == 1))
+
+                if rep == 2:
+                    trials.addResponse(acc)
+                    acclist.append(acc)                             # creates list of qwest/staircase accuracies to determine whether participant met the cutoff for moving onto the experimental trials
+
+
                 ##----------------FINISH WHILE LOOP LEFTOVERS-----------------##
 
+                for a_stim in [square_right, square_left, square_bottom][0:len(d["x_coords"])]:
+                    a_stim.setAutoDraw(False)
+    
                 cross.setAutoDraw(False)
+
 
                 sound_clip.setSound(soundp)
                 sound_clip.play() #correct and incorrect sounds are both 250 ms
@@ -802,8 +803,8 @@ for rep in list(range(extra_task - 1, 4)):
                     ['lilsquareEndTime', lilsquare.tEnd],
                     ['lilsquareEndFrame', lilsquare.frameEnd],
                     ['lilafterflash', lilafterbulge],
-                    ['ButtonPressTime', key[0].rt],
-                    ['Key', key[0]],
+                    ['ButtonPressTime', rt],
+                    ['Key', key_press],
                     ['false_presses', lenkeylist],
                     ['Acc', acc],
                     ['Opacity', trialopacity],
@@ -811,7 +812,6 @@ for rep in list(range(extra_task - 1, 4)):
                     ['CorrSide', lil_side],
                     ['SquareAbsent', square_absent]
                 ])
-
 
 
                 if extra_task == 1:
@@ -834,11 +834,11 @@ for rep in list(range(extra_task - 1, 4)):
                         if task == 4:
                             my_inst = wm_probe_text
                             def correct_wmarith():
-                                return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
+                                return (key_press[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key_press[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
                         elif task == 2 or task == 3:
                             my_inst = expmatrix[10][randomseq[trial]]
                             def correct_wmarith():
-                                return (key[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
+                                return (key_press[0] in wm_arith_keys[:2] and corr_wmarith_choice) or (key_press[0] in wm_arith_keys[2:] and corr_wmarith_choice == False)
                         wmarith_probe.setText(my_inst)
 
 
@@ -862,7 +862,7 @@ for rep in list(range(extra_task - 1, 4)):
                                 wmarith_probetStart = t
                                 wmarith_probeframeStart = frameN
                             elif frameN == wmarith_total:
-                                 key = ['nope']
+                                 key_press = 'nope'
                             if len(key) > 0:
                                 if frameN < wmarith_pause:
                                     lenkey_wmarith += 1
@@ -891,12 +891,12 @@ for rep in list(range(extra_task - 1, 4)):
 
                     ##-------------------RECORD DATA------------------------------##
 
-                    key_press = key[0]
+#                    key_press = key[0]
                     save_data(True, [
                         ['wmarith_probeStartTime', 'wmarith_probetStart'],
                         ['wmarith_probeStartFrame', 'wmarith_probeframeStart'],
-                        ['ButtonPressTime_wmarith', 'key[0].rt'],
-                        ['Key_wmarith', 'key_press'],
+                        ['ButtonPressTime_wmarith', 'rt'],
+                        ['Key_wmarith', 'key_press[0]'],
                         ['false_presses_wmarith', 'lenkey_wmarith'],
                         ['Acc_wmarith', 'acc'],
                         ['PenultimateAbsent', 'penultimate_absent'],
